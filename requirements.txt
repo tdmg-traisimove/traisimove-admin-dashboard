@@ -1,0 +1,9 @@
+--extra-index-url https://plotly.nrel.gov/Docs/packages
+# dash is required to call `build:py`
+dash
+gunicorn
+pandas
+plotly
+dash-bootstrap-components
+dash_extensions
+nrel_dash_components-0.0.1.tar.gz
