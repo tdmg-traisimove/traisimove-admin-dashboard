@@ -39,7 +39,7 @@ source myvenv/bin/activate
 Install the requirements:
 
 ```
-pip install -r requirements.txt
+pip install -r dashboard/requirements.txt
 ```
 
 Run the app:

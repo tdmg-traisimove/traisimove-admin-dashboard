@@ -3,7 +3,7 @@ version: "3"
 services:
   dash-app:
     build:
-      context: .
+      context: dashboard
       dockerfile: ./Dockerfile
     image: dav/dash-app:0.0.1
     ports:
