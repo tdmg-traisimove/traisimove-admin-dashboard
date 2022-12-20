@@ -3,7 +3,7 @@ FROM shankari/e-mission-server:master_2022-12-08--08-38
 ENV DASH_DEBUG_MODE True
 ENV SERVER_PORT 8050
 
-# copy setup and start shell scripts
+# copy over setup files
 WORKDIR /usr/src/app/dashboard_setup
 COPY requirements.txt nrel_dash_components-0.0.1.tar.gz docker/setup.sh ./
 
