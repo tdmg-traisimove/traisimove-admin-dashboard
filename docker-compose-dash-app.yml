@@ -1,13 +1,39 @@
 # docker-compose.yml
 version: "3"
 services:
-  dash-app:
+  dashboard:
     build:
-      context: dashboard
-      dockerfile: ./Dockerfile
-    image: dav/dash-app:0.0.1
+      context: .
+      dockerfile: docker/Dockerfile
+    image: openpath/opdash:0.0.1
     ports:
       - "8050:8050"
     environment:
       DASH_DEBUG_MODE: "True"
       SERVER_PORT: 8050
+      DB_HOST: db
+      WEB_SERVER_HOST: 0.0.0.0
+      SERVER_BRANCH: master
+    networks:
+       - emission
+    volumes:
+      - ./dashboard:/usr/src/app/dashboard
+      - ./app.py:/usr/src/app/app.py
+  db:
+    image: mongo:4.4.0
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - mongo-data:/data/db
+    networks:
+       - emission
+    ports:
+      - "27017:27017"
+
+networks:
+  emission:
+
+volumes:
+  mongo-data:
