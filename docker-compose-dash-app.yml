@@ -17,8 +17,9 @@ services:
     networks:
        - emission
     volumes:
-      - ./dashboard:/usr/src/app/dashboard
+      - ./pages:/usr/src/app/pages
       - ./app.py:/usr/src/app/app.py
+      - ./app_sidebar_collapsible.py:/usr/src/app/app_sidebar_collapsible.py
   db:
     image: mongo:4.4.0
     deploy:

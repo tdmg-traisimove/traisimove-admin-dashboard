@@ -12,10 +12,13 @@ WORKDIR /usr/src/app
 RUN bash -c "./dashboard_setup/setup.sh"
 
 # copy over dashboard code
-WORKDIR /usr/src/app/dashboard
-COPY ./dashboard ./
+WORKDIR /usr/src/app/pages
+COPY ./pages ./
 WORKDIR /usr/src/app
-COPY app.py globals.py globalsUpdater.py Procfile ./
+COPY app.py app_sidebar_collapsible.py assets globals.py globalsUpdater.py Procfile ./
+
+WORKDIR /usr/src/app/assets
+COPY assets/style.css ./
 
 # copy over test data
 WORKDIR /usr/src/app/data

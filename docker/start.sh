@@ -14,4 +14,5 @@ fi
 ./e-mission-py.bash bin/debug/load_timeline_for_day_and_user.py emission/tests/data/real_examples/shankari_2015-07-22 test_july_22
 
 # run the app
-python app.py
+# python app.py
+python app_sidebar_collapsible.py
