@@ -118,6 +118,6 @@ app.layout = html.Div(
 )
 
 if __name__ == "__main__":
-    envPort = int(os.getenv('SERVER_PORT', '8050'))
+    envPort = int(os.getenv('DASH_SERVER_PORT', '8050'))
     envDebug = os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true'
     app.run_server(debug=envDebug, host='0.0.0.0', port=envPort)
