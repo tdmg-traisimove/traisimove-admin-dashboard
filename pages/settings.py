@@ -15,10 +15,6 @@ register_page(__name__, path="/settings")
 intro = """
 ## Settings
 
-Settings Settings Settings Settings Settings Settings Settings Settings 
-Settings Settings Settings Settings Settings Settings Settings Settings 
-Settings Settings Settings Settings Settings Settings Settings Settings 
-Settings Settings Settings Settings Settings Settings Settings Settings 
 """
 
 

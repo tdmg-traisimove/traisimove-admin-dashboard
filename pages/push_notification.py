@@ -15,13 +15,6 @@ register_page(__name__, path="/push_notification")
 intro = """
 ## Push notification
 
-Push notification Push notification Push notification Push notification Push notification Push notification Push notification 
-
-Push notification Push notification Push notification Push notification Push notification Push notification Push notification 
-
-Push notification Push notification Push notification Push notification Push notification Push notification Push notification 
-
-Push notification Push notification Push notification Push notification Push notification Push notification Push notification 
 """
 
 

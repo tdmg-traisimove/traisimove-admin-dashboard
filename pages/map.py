@@ -15,11 +15,6 @@ register_page(__name__, path="/map")
 intro = """
 ## Map
 
-Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map 
-Map Map Map Map Map Map Map Map 
-Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map 
-Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map 
-Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map Map 
 """
 
 
