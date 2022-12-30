@@ -18,6 +18,8 @@ from dash import Input, Output, dcc, html
 import os
 
 PLOTLY_LOGO = "https://www.nrel.gov/transportation/assets/images/openpath-logo.jpg"
+OPENPATH_LOGO = "https://www.nrel.gov/transportation/assets/images/openpath-logo.jpg"
+
 
 app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
@@ -30,7 +32,7 @@ sidebar = html.Div(
             [
                 # width: 3rem ensures the logo is the exact width of the
                 # collapsed sidebar (accounting for padding)
-                html.Img(src=PLOTLY_LOGO, style={"width": "3rem"}),
+                html.Img(src=OPENPATH_LOGO, style={"width": "3rem"}),
                 html.H2("OpenPATH"),
             ],
             className="sidebar-header",
@@ -77,7 +79,7 @@ sidebar = html.Div(
                     ],
                     href="/settings",
                     active="exact",
-                ),
+                )
             ],
             vertical=True,
             pills=True,
