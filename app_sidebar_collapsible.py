@@ -17,9 +17,23 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
 import os
 
-PLOTLY_LOGO = "https://www.nrel.gov/transportation/assets/images/openpath-logo.jpg"
+# Data/file handling imports
+import pathlib
+
+# Global data modules to share data across callbacks
+# (Not sure how this stands up in multi-user/hosted situations)
+import globals as gl
+import globalsUpdater as gu
+
 OPENPATH_LOGO = "https://www.nrel.gov/transportation/assets/images/openpath-logo.jpg"
 
+#------------------------------------------------#
+# Set the data path
+#------------------------------------------------#
+
+# For data that lives within the application.
+# Set the path to the data directory
+DATA_PATH = pathlib.Path(__file__).parent.joinpath("./data/").resolve()
 
 app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
