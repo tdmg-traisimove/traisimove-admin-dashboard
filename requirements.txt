@@ -7,4 +7,4 @@ plotly
 dash-bootstrap-components
 dash_extensions
 dashboard_setup/nrel_dash_components-0.0.1.tar.gz # for docker-compose
-
+pylint
