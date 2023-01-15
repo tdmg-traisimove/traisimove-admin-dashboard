@@ -17,6 +17,12 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
 import os
 
+# Etc
+import pandas as pd
+
+# e-mission modules
+import emission.core.get_database as edb
+
 # Data/file handling imports
 import pathlib
 
@@ -42,6 +48,7 @@ app = dash.Dash(
 
 sidebar = html.Div(
     [
+        
         html.Div(
             [
                 # width: 3rem ensures the logo is the exact width of the
@@ -113,9 +120,69 @@ app.layout = html.Div(
     [
         dcc.Location(id="url"), 
         sidebar, 
-        content
+        content,
+        dcc.Store(id="store-trips", data={}),
+        dcc.Store(id="store-uuids", data={}),
+        dcc.Interval(id='interval-component', interval=10*1000, n_intervals=0),
     ]
 )
+
+# Load data stores
+@app.callback(
+    Output("store-uuids", "data"),
+    [Input('interval-component', 'n_intervals')]
+)
+def update_store_uuids(n_intervals):
+    dff = query_uuids()
+    store = {
+        "data": dff.to_dict("records"),
+        "columns": [{"name": i, "id": i} for i in dff.columns],
+    }
+    return store
+
+def query_uuids():
+    uuid_data = list(edb.get_uuid_db().find({}, {"_id": 0}))
+    df = pd.json_normalize(uuid_data)
+    df.rename(
+        columns={"user_email": "user_token",
+                "uuid": "user_id"},
+        inplace=True
+    )
+    df['user_id'] = df['user_id'].astype(str)
+    df['update_ts'] = pd.to_datetime(df['update_ts'])
+    return(df)
+
+def query_confirmed_trips():
+    query_result = edb.get_analysis_timeseries_db().find(
+        {'$and':
+            [
+                {'metadata.key': 'analysis/confirmed_trip'},
+                {'data.user_input.trip_user_input': {'$exists': False}}
+            ]
+         },
+         {
+            "_id": 0,
+            "user_id": 1,
+            "trip_start_time_str": "$data.start_fmt_time",
+            "trip_start_time_tz": "$data.start_local_dt.timezone",
+            "travel_modes": "$data.user_input.trip_user_input.data.jsonDocResponse.data.travel_mode"
+        }
+    )
+    df = pd.DataFrame(list(query_result))
+    df['user_id'] = df['user_id'].astype(str)
+    return df
+
+@app.callback(
+    Output("store-trips", "data"),
+    [Input('interval-component', 'n_intervals')]
+)
+def update_store_trips(n_intervals):
+    dff = query_confirmed_trips()
+    store = {
+        "data": dff.to_dict("records"),
+        "columns": [{"name": i, "id": i} for i in dff.columns],
+    }
+    return store
 
 if __name__ == "__main__":
     envPort = int(os.getenv('DASH_SERVER_PORT', '8050'))
