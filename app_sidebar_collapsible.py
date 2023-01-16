@@ -123,7 +123,7 @@ app.layout = html.Div(
         content,
         dcc.Store(id="store-trips", data={}),
         dcc.Store(id="store-uuids", data={}),
-        dcc.Interval(id='interval-component', interval=10*1000, n_intervals=0),
+        dcc.Interval(id='interval-component', interval=60*1000, n_intervals=0),
     ]
 )
 
