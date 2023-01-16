@@ -50,16 +50,15 @@ layout = html.Div(
 def render_content(tab, n_intervals, store_uuids, store_trips):
     if tab == 'tab-uuids-datatable':
         df = pd.DataFrame(store_uuids["data"])
-        return html.Div(populate_datatable(df))
+        return populate_datatable(df)
     elif tab == 'tab-trips-datatable':
         df = pd.DataFrame(store_trips["data"])
-        return html.Div(populate_datatable(df))
+        return populate_datatable(df)
 
 def populate_datatable(df):
     if not isinstance(df, pd.DataFrame):
         pass
-    return [
-        dash_table.DataTable(
+    return dash_table.DataTable(
             # id='my-table',
             # columns=[{"name": i, "id": i} for i in df.columns],
             data=df.to_dict('records'),
@@ -77,4 +76,3 @@ def populate_datatable(df):
                         },
             style_table={'overflowX': 'auto',}
         )
-    ]
