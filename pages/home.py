@@ -11,6 +11,7 @@ from dash import dcc, html, Input, Output, State, callback, register_page
 import dash_bootstrap_components as dbc
 from datetime import date
 from plotly import graph_objs as go
+import plotly.express as px
 
 # Etc
 import pandas as pd
@@ -37,6 +38,7 @@ def get_uuid_df():
     return uuid_df
 
 def compute_sign_up_trend(uuid_df):
+    uuid_df['update_ts'] = pd.to_datetime(uuid_df['update_ts'])
     res_df = (
         uuid_df
             .groupby(uuid_df['update_ts'].dt.date)
@@ -85,41 +87,16 @@ def find_last_get(uuid):
     last_get = last_get_result_list[0] if len(last_get_result_list) > 0 else None
     return last_get
 
-def check_active(uuid_list, threshold):
-    now = arrow.get().timestamp
-    last_get_entries = [find_last_get(npu) for npu in uuid_list]
-    for uuid, lge in zip(uuid_list, last_get_entries):
-        if lge is None:
-            print(uuid, None, "inactive")
-        else:
-            last_call_diff = arrow.get().timestamp - lge["metadata"]["write_ts"]
-            if last_call_diff > threshold:
-                print(uuid, lge["metadata"]["write_fmt_time"], "inactive")
-            else:
-                print(uuid, lge["metadata"]["write_fmt_time"], "active")
-
 def get_number_of_active_users(uuid_list, threshold):
     now = arrow.get().timestamp
     last_get_entries = [find_last_get(npu) for npu in uuid_list]
     number_of_active_users = 0
     for uuid, lge in zip(uuid_list, last_get_entries):
-        if lge is None:
-            print(uuid, None, "inactive")
-        else:
+        if lge is not None:
             last_call_diff = arrow.get().timestamp - lge["metadata"]["write_ts"]
-            if last_call_diff > threshold:
-                print(uuid, lge["metadata"]["write_fmt_time"], "inactive")
-            else:
-                print(uuid, lge["metadata"]["write_fmt_time"], "active")
+            if last_call_diff <= threshold:
                 number_of_active_users += 1
     return number_of_active_users
-
-uuid_df = get_uuid_df()
-confirmed_trips_df = get_confirmed_trips()
-sign_up_trend_df = compute_sign_up_trend(uuid_df)
-confirmed_trips_trend_df = compute_trips_trend(confirmed_trips_df, 'trip_start_time_str')
-ONE_DAY = 100 * 24 * 60 * 60
-number_of_active_users = get_number_of_active_users(uuid_df['user_id'], ONE_DAY)
 
 intro = """
 ## Home
@@ -133,9 +110,37 @@ card_icon = {
     "margin": "auto",
 }
 
+@callback(
+    Output('card-users', 'children'),
+    [Input('store-uuids', 'data')]
+)
+def update_card_users(store_uuids):
+    nrow = pd.DataFrame(store_uuids.get('data')).shape[0]
+    card = generate_card("# Users", f"{nrow} users", "fa fa-users")
+    return card
+
+@callback(
+    Output('card-active-users', 'children'),
+    [Input('store-uuids', 'data')]
+)
+def update_card_active_users(store_uuids):
+    uuid_df = pd.DataFrame(store_uuids.get('data'))
+    ONE_DAY = 100 * 24 * 60 * 60
+    number_of_active_users = get_number_of_active_users(uuid_df['user_id'], ONE_DAY)
+    card = generate_card("# Active users", f"{number_of_active_users} users", "fa fa-person-walking")
+    return card
+
+@callback(
+    Output('card-trips', 'children'),
+    [Input('store-trips', 'data')]
+)
+def update_card_trips(store_trips):
+    nrow = pd.DataFrame(store_trips.get('data')).shape[0]
+    card = generate_card("# Confirmed trips", f"{nrow} trips", "fa fa-angles-right")
+    return card
+
 def generate_card(title_text, body_text, icon): 
-    card = dbc.Col([
-        dbc.CardGroup([
+    card = dbc.CardGroup([
             dbc.Card(
                 dbc.CardBody(
                     [
@@ -149,21 +154,36 @@ def generate_card(title_text, body_text, icon):
                     className="bg-primary",
                     style={"maxWidth": 75},
                 ),
-            ],
-            className="mt-4 shadow")
-    ], md=4)
+            ])
     return card
 
-card_users = generate_card("Number of users", f"{uuid_df.shape[0]} users", "fa fa-users")
-card_active_users = generate_card("Active users", f"{number_of_active_users} users", "fa fa-person-walking")
-card_trips = generate_card("Number of confirmed trips", f"{confirmed_trips_df.shape[0]} trips", "fa fa-angles-right")
+def generate_barplot(data, x, y, title):
+    fig = px.bar(data, x=x, y=y)
+    fig.update_layout(title=title)
+    return fig
 
-def generate_barplot(x, y, title, id):
-    data = [go.Bar(x=x, y=y)]
-    return  dcc.Graph(id=id, figure={'data': data, 'layout': go.Layout(title=title)})
 
-plot_hist_signups_trend = generate_barplot(sign_up_trend_df['date'], sign_up_trend_df['count'], "Sign-ups trend", id = "plot1")
-plot_hist_trips_trend = generate_barplot(confirmed_trips_trend_df['date'], confirmed_trips_trend_df['count'], "Trips trend", id = "plot2")
+@callback(
+    Output('fig-sign-up-trend', 'figure'),
+    [Input('store-uuids', 'data')]
+)
+def generate_plot_sign_up_trend(store_uuids):
+    df = pd.DataFrame(store_uuids.get("data"))
+    trend_df = compute_sign_up_trend(df)
+    fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Sign-ups trend")
+    return fig
+
+@callback(
+    Output('fig-trips-trend', 'figure'),
+    [Input('store-trips', 'data')]
+)
+def generate_plot_trips_trend(store_trips):
+    df = pd.DataFrame(store_trips.get("data"))
+    trend_df = compute_trips_trend(df, date_col = "trip_start_time_str")
+    fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Trips trend")
+    return fig
+
+
 
 layout = html.Div(
     [
@@ -181,15 +201,15 @@ layout = html.Div(
 
         # Cards 
         dbc.Row([
-            card_users,
-            card_active_users,
-            card_trips
+            dbc.Col(id='card-users'),
+            dbc.Col(id='card-active-users'),
+            dbc.Col(id='card-trips')
         ]),
 
         # Plots
         dbc.Row([
-            plot_hist_signups_trend,
-            plot_hist_trips_trend
+            dcc.Graph(id="fig-sign-up-trend"),
+            dcc.Graph(id="fig-trips-trend"),
         ])
     ]
 )
