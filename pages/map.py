@@ -18,7 +18,6 @@ intro = """## Map"""
 
 
 def get_confirmed_trips(start_date, end_date):
-
     query = {
         '$and': [
             {'metadata.key': 'analysis/confirmed_trip'},
@@ -28,7 +27,6 @@ def get_confirmed_trips(start_date, end_date):
     if start_date is not None:
         start_time = datetime.combine(start_date, datetime.min.time())
         query['$and'][1]['data.start_ts']['$gte'] = start_time.timestamp()
-
     if end_date is not None:
         end_time = datetime.combine(end_date, datetime.max.time())
         query['$and'][1]['data.statr_ts']['$lt'] = end_time.timestamp()
@@ -46,6 +44,9 @@ def get_confirmed_trips(start_date, end_date):
         }
     )
     confirmed_trips_df = pd.json_normalize(list(query_result))
+    confirmed_trips_df['user_id'] = confirmed_trips_df['user_id'].apply(
+        lambda user_id: str(user_id.as_uuid(3))
+    )
     return confirmed_trips_df
 
 
@@ -83,15 +84,15 @@ def create_fig_for_user(group, user_id):
         }
     )
 
-    return fig
+    return fig, user_id
 
 
 def get_output_data(start_date, end_date, user_id):
     confirmed_trips_df = get_confirmed_trips(start_date, end_date)
     group = confirmed_trips_df.groupby('user_id')
-    options = [str(user_id) for user_id in group.groups.keys()]
-    fig = create_fig_for_user(group, user_id)
-    return options, fig
+    options = [user_id for user_id in group.groups.keys()]
+    fig, user_id = create_fig_for_user(group, user_id)
+    return options, user_id, fig
 
 
 layout = html.Div(
@@ -123,11 +124,13 @@ layout = html.Div(
 
 @callback(
     Output('user-dropdown', 'options'),
+    Output('user-dropdown', 'value'),
     Output('trip-map', 'figure'),
     Input('map-date-picker', 'start_date'),
     Input('map-date-picker', 'end_date'),
+    Input('user-dropdown', 'value')
 )
-def update_output(start_date, end_date):
+def update_output(start_date, end_date, value):
     start_date_obj = date.fromisoformat(start_date) if start_date else None
     end_date_obj = date.fromisoformat(end_date) if end_date else None
-    return get_output_data(start_date_obj, end_date_obj, None)
+    return get_output_data(start_date_obj, end_date_obj, value)
