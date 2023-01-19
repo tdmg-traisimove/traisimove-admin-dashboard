@@ -49,36 +49,49 @@ def get_confirmed_trips(start_date, end_date):
     return confirmed_trips_df
 
 
-def get_output_data(start_date, end_date):
-    confirmed_trips_df = get_confirmed_trips(start_date, end_date)
-    group = confirmed_trips_df.groupby('user_id')
+def create_fig_for_user(group, user_id):
     fig = go.Figure()
+    start_lon, start_lat = 0, 0
+    if user_id is None and len(group.groups) > 0:
+        user_id = list(group.groups.keys())[0]
+    if user_id is not None:
+        trips = group.get_group(user_id)
+        start_coordinates = trips['start_coordinates'].values.tolist()
+        end_coordinates = trips['end_coordinates'].values.tolist()
+        n = len(start_coordinates)
 
-    options = list()
-    for user_id in group.groups:
-        options.append(str(user_id))
+        for i in range(n):
+            if i == 0:
+                start_lon = start_coordinates[i][0]
+                start_lat = end_coordinates[i][1]
 
-    fig.add_trace(
-        go.Scattermapbox(
-            mode="markers+lines",
-            lon=[-50, -60, 40],
-            lat=[30, 10, -20],
-            marker={'size': 10}
-        )
-    )
+            fig.add_trace(
+                go.Scattermapbox(
+                    mode="markers+lines",
+                    lon=[start_coordinates[i][0], end_coordinates[i][0]],
+                    lat=[start_coordinates[i][1], end_coordinates[i][1]],
+                    marker={'size': 10}
+                )
+            )
 
     fig.update_layout(
         margin={'l': 0, 't': 0, 'b': 0, 'r': 0},
         mapbox={
             'style': "stamen-terrain",
-            'center': {'lon': -20, 'lat': -20},
-            'zoom': 2
+            'center': {'lon': start_lon, 'lat': start_lat},
+            'zoom': 11
         }
     )
 
+    return fig
+
+
+def get_output_data(start_date, end_date, user_id):
+    confirmed_trips_df = get_confirmed_trips(start_date, end_date)
+    group = confirmed_trips_df.groupby('user_id')
+    options = [str(user_id) for user_id in group.groups.keys()]
+    fig = create_fig_for_user(group, user_id)
     return options, fig
-
-
 
 
 layout = html.Div(
@@ -117,4 +130,4 @@ layout = html.Div(
 def update_output(start_date, end_date):
     start_date_obj = date.fromisoformat(start_date) if start_date else None
     end_date_obj = date.fromisoformat(end_date) if end_date else None
-    return get_output_data(start_date_obj, end_date_obj)
+    return get_output_data(start_date_obj, end_date_obj, None)
