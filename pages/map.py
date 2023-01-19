@@ -29,7 +29,7 @@ def get_confirmed_trips(start_date, end_date):
         query['$and'][1]['data.start_ts']['$gte'] = start_time.timestamp()
     if end_date is not None:
         end_time = datetime.combine(end_date, datetime.max.time())
-        query['$and'][1]['data.statr_ts']['$lt'] = end_time.timestamp()
+        query['$and'][1]['data.start_ts']['$lt'] = end_time.timestamp()
 
     query_result = edb.get_analysis_timeseries_db().find(
         query,
@@ -44,39 +44,46 @@ def get_confirmed_trips(start_date, end_date):
         }
     )
     confirmed_trips_df = pd.json_normalize(list(query_result))
-    confirmed_trips_df['user_id'] = confirmed_trips_df['user_id'].apply(
-        lambda user_id: str(user_id.as_uuid(3))
-    )
     return confirmed_trips_df
 
 
 def create_fig_for_user(group, user_id):
     fig = go.Figure()
     start_lon, start_lat = 0, 0
-    if user_id is None and len(group.groups) > 0:
-        user_id = list(group.groups.keys())[0]
-    if user_id is not None:
-        trips = group.get_group(user_id)
-        start_coordinates = trips['start_coordinates'].values.tolist()
-        end_coordinates = trips['end_coordinates'].values.tolist()
-        n = len(start_coordinates)
 
-        for i in range(n):
-            if i == 0:
-                start_lon = start_coordinates[i][0]
-                start_lat = end_coordinates[i][1]
+    if group is not None:
+        if user_id is None:
+            user_id = list(group.groups.keys())[0]
+        if user_id is not None:
+            trips = group.get_group(user_id)
+            trips.sort_values('trip_start_time_str')
+            start_coordinates = trips['start_coordinates'].values.tolist()
+            end_coordinates = trips['end_coordinates'].values.tolist()
+            n = len(start_coordinates)
 
-            fig.add_trace(
-                go.Scattermapbox(
-                    mode="markers+lines",
-                    lon=[start_coordinates[i][0], end_coordinates[i][0]],
-                    lat=[start_coordinates[i][1], end_coordinates[i][1]],
-                    marker={'size': 10}
+            for i in range(n):
+                if i == 0:
+                    start_lon = start_coordinates[i][0]
+                    start_lat = end_coordinates[i][1]
+
+                fig.add_trace(
+                    go.Scattermapbox(
+                        mode="markers+lines",
+                        lon=[start_coordinates[i][0], end_coordinates[i][0]],
+                        lat=[start_coordinates[i][1], end_coordinates[i][1]],
+                        marker={'size': 10},
+                        legendrank=i + 1,
+                    )
                 )
-            )
 
     fig.update_layout(
-        margin={'l': 0, 't': 0, 'b': 0, 'r': 0},
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        ),
+        margin={'l': 0, 't': 30, 'b': 0, 'r': 0},
         mapbox={
             'style': "stamen-terrain",
             'center': {'lon': start_lon, 'lat': start_lat},
@@ -89,8 +96,14 @@ def create_fig_for_user(group, user_id):
 
 def get_output_data(start_date, end_date, user_id):
     confirmed_trips_df = get_confirmed_trips(start_date, end_date)
-    group = confirmed_trips_df.groupby('user_id')
-    options = [user_id for user_id in group.groups.keys()]
+    group = None
+    options = []
+    if not confirmed_trips_df.empty:
+        confirmed_trips_df['user_id'] = confirmed_trips_df['user_id'].apply(
+            lambda user_id: str(user_id.as_uuid(3))
+        )
+        group = confirmed_trips_df.groupby('user_id')
+        options = [user_id for user_id in group.groups.keys()]
     fig, user_id = create_fig_for_user(group, user_id)
     return options, user_id, fig
 
