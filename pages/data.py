@@ -53,6 +53,7 @@ def render_content(tab, n_intervals, store_uuids, store_trips):
         return populate_datatable(df)
     elif tab == 'tab-trips-datatable':
         df = pd.DataFrame(store_trips["data"])
+        df = df.drop(columns=["start_coordinates", "end_coordinates"])
         return populate_datatable(df)
 
 def populate_datatable(df):

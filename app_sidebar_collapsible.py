@@ -144,13 +144,17 @@ def query_uuids():
     uuid_data = list(edb.get_uuid_db().find({}, {"_id": 0}))
     df = pd.json_normalize(uuid_data)
     df.rename(
-        columns={"user_email": "user_token",
-                "uuid": "user_id"},
+        columns={
+            "user_email": "user_token",
+            "uuid": "user_id",
+        },
         inplace=True
     )
-    df['user_id'] = df['user_id'].astype(str)
+    df['user_id'] = df['user_id'].apply(
+        lambda binary_uuid: str(binary_uuid.as_uuid(3))
+    )
     df['update_ts'] = pd.to_datetime(df['update_ts'])
-    return(df)
+    return df
 
 def query_confirmed_trips():
     query_result = edb.get_analysis_timeseries_db().find(
@@ -159,17 +163,22 @@ def query_confirmed_trips():
                 {'metadata.key': 'analysis/confirmed_trip'},
                 {'data.user_input.trip_user_input': {'$exists': False}}
             ]
-         },
-         {
+        },
+        {
             "_id": 0,
             "user_id": 1,
             "trip_start_time_str": "$data.start_fmt_time",
-            "trip_start_time_tz": "$data.start_local_dt.timezone",
-            "travel_modes": "$data.user_input.trip_user_input.data.jsonDocResponse.data.travel_mode"
+            "trip_end_time_str": "$data.end_fmt_time",
+            "timezone": "$data.start_local_dt.timezone",
+            "start_coordinates": "$data.start_loc.coordinates",
+            "end_coordinates": "$data.end_loc.coordinates",
+            "travel_modes": "$data.user_input.trip_user_input.data.jsonDocResponse.data.travel_mode",
         }
     )
-    df = pd.DataFrame(list(query_result))
-    df['user_id'] = df['user_id'].astype(str)
+    df = pd.json_normalize(list(query_result))
+    df['user_id'] = df['user_id'].apply(
+        lambda binary_uuid: str(binary_uuid.as_uuid(3))
+    )
     return df
 
 @app.callback(

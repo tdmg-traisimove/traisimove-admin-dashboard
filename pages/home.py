@@ -25,17 +25,6 @@ import bin.debug.export_participants_trips_csv as eptc
 
 register_page(__name__, path="/")
 
-def get_uuid_df():
-    uuid_data = list(edb.get_uuid_db().find({}, {"_id": 0}))
-    uuid_df = pd.json_normalize(uuid_data)
-    uuid_df.rename(
-        columns={"user_email": "user_token",
-                "uuid": "user_id"},
-        inplace=True
-    )
-    uuid_df['user_id'] = uuid_df['user_id'].astype(str)
-    uuid_df['update_ts'] = pd.to_datetime(uuid_df['update_ts'])
-    return uuid_df
 
 def compute_sign_up_trend(uuid_df):
     uuid_df['update_ts'] = pd.to_datetime(uuid_df['update_ts'])
@@ -49,25 +38,6 @@ def compute_sign_up_trend(uuid_df):
     res_df['date'] = pd.to_datetime(res_df['date'])
     return res_df
 
-def get_confirmed_trips():
-    query_result = edb.get_analysis_timeseries_db().find(
-        # query
-        {'$and':
-            [
-                {'metadata.key': 'analysis/confirmed_trip'},
-                {'data.user_input.trip_user_input': {'$exists': False}}
-            ]
-         },
-         {
-            "_id": 0,
-            "user_id": 1,
-            "trip_start_time_str": "$data.start_fmt_time",
-            "trip_start_time_tz": "$data.start_local_dt.timezone",
-            "travel_modes": "$data.user_input.trip_user_input.data.jsonDocResponse.data.travel_mode"
-        }
-    )
-    query_result_df = pd.DataFrame(list(query_result))
-    return query_result_df
 
 def compute_trips_trend(trips_df, date_col):
     trips_df[date_col] = pd.to_datetime(trips_df[date_col], utc=True)
