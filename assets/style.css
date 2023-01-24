@@ -71,3 +71,8 @@
   margin-right: 2rem;
   padding: 2rem 1rem;
 }
+
+.radio-items > label {
+  padding: 0 7px;
+  flex: 1;
+}
