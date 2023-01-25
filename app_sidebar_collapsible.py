@@ -16,6 +16,7 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
 import os
+from datetime import datetime, date, timezone
 
 # Etc
 import pandas as pd
@@ -114,7 +115,20 @@ CONTENT_STYLE = {
     "margin-right": "2rem",
     "padding": "2rem 1rem",
 }
-content = html.Div(dash.page_container, style=CONTENT_STYLE)
+content = html.Div([
+        html.Div(
+            dcc.DatePickerRange(
+                id='date-picker',
+                display_format='D/M/Y',
+                start_date_placeholder_text='D/M/Y',
+                end_date_placeholder_text='D/M/Y',
+                min_date_allowed=date(2010, 1, 1),
+                max_date_allowed=date.today(),
+                initial_visible_month=date.today(),
+            ), style={'margin': '10px 10px 0 0', 'display': 'flex', 'justify-content': 'right'}
+        ),
+        html.Div(dash.page_container, style=CONTENT_STYLE),
+])
 
 app.layout = html.Div(
     [
@@ -130,40 +144,64 @@ app.layout = html.Div(
 # Load data stores
 @app.callback(
     Output("store-uuids", "data"),
-    [Input('interval-component', 'n_intervals')]
+    Input('interval-component', 'n_intervals'),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
 )
-def update_store_uuids(n_intervals):
-    dff = query_uuids()
+def update_store_uuids(n_intervals, start_date, end_date):
+    start_date_obj = date.fromisoformat(start_date) if start_date else None
+    end_date_obj = date.fromisoformat(end_date) if end_date else None
+    dff = query_uuids(start_date_obj, end_date_obj)
     store = {
         "data": dff.to_dict("records"),
         "columns": [{"name": i, "id": i} for i in dff.columns],
     }
     return store
 
-def query_uuids():
-    uuid_data = list(edb.get_uuid_db().find({}, {"_id": 0}))
+def query_uuids(start_date, end_date):
+    query = {'update_ts': {'$exists': True}}
+    if start_date is not None:
+        start_time = datetime.combine(start_date, datetime.min.time()).astimezone(timezone.utc)
+        query['update_ts']['$gte'] = start_time
+
+    if end_date is not None:
+        end_time = datetime.combine(end_date, datetime.max.time()).astimezone(timezone.utc)
+        query['update_ts']['$lt'] = end_time
+    query_result = edb.get_uuid_db().find(query, {"_id": 0})
+    uuid_data = list(query_result)
     df = pd.json_normalize(uuid_data)
-    df.rename(
-        columns={
-            "user_email": "user_token",
-            "uuid": "user_id",
-        },
-        inplace=True
-    )
-    df['user_id'] = df['user_id'].apply(
-        lambda binary_uuid: str(binary_uuid.as_uuid(3))
-    )
-    df['update_ts'] = pd.to_datetime(df['update_ts'])
+    if not df.empty:
+        df.rename(
+            columns={
+                "user_email": "user_token",
+                "uuid": "user_id",
+            },
+            inplace=True
+        )
+        df['update_ts'] = pd.to_datetime(df['update_ts'])
+        df['user_id'] = df['user_id'].apply(
+            lambda binary_uuid: str(binary_uuid.as_uuid(3))
+        )
     return df
 
-def query_confirmed_trips():
+def query_confirmed_trips(start_date, end_date):
+    query = {
+        '$and': [
+            {'metadata.key': 'analysis/confirmed_trip'},
+            {'data.start_ts': {'$exists': True}},
+            {'data.user_input.trip_user_input': {'$exists': False}},
+        ]
+    }
+    if start_date is not None:
+        start_time = datetime.combine(start_date, datetime.min.time())
+        query['$and'][1]['data.start_ts']['$gte'] = start_time.timestamp()
+
+    if end_date is not None:
+        end_time = datetime.combine(end_date, datetime.max.time())
+        query['$and'][1]['data.start_ts']['$lt'] = end_time.timestamp()
+
     query_result = edb.get_analysis_timeseries_db().find(
-        {'$and':
-            [
-                {'metadata.key': 'analysis/confirmed_trip'},
-                {'data.user_input.trip_user_input': {'$exists': False}}
-            ]
-        },
+        query,
         {
             "_id": 0,
             "user_id": 1,
@@ -176,17 +214,22 @@ def query_confirmed_trips():
         }
     )
     df = pd.json_normalize(list(query_result))
-    df['user_id'] = df['user_id'].apply(
-        lambda binary_uuid: str(binary_uuid.as_uuid(3))
-    )
+    if not df.empty:
+        df['user_id'] = df['user_id'].apply(
+            lambda binary_uuid: str(binary_uuid.as_uuid(3))
+        )
     return df
 
 @app.callback(
     Output("store-trips", "data"),
-    [Input('interval-component', 'n_intervals')]
+    Input('interval-component', 'n_intervals'),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
 )
-def update_store_trips(n_intervals):
-    dff = query_confirmed_trips()
+def update_store_trips(n_intervals, start_date, end_date):
+    start_date_obj = date.fromisoformat(start_date) if start_date else None
+    end_date_obj = date.fromisoformat(end_date) if end_date else None
+    dff = query_confirmed_trips(start_date_obj, end_date_obj)
     store = {
         "data": dff.to_dict("records"),
         "columns": [{"name": i, "id": i} for i in dff.columns],

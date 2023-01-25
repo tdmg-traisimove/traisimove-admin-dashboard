@@ -4,53 +4,44 @@ because dcc.Location must be in app.py. Since the dcc.Location component is not
 in the layout when navigating to this page, it triggers the callback. The
 workaround is to check if the input value is None.
 """
-from datetime import datetime, date, timezone
-from dash import dcc, html, Input, Output, callback, register_page
+from dash import dcc, html, Input, Output, callback, register_page, ctx
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
+from dash.exceptions import PreventUpdate
 
 register_page(__name__, path="/map")
 
 intro = """## Map"""
 
 
-def create_fig_for_user(group, user_id):
+def create_fig(trips_group_by_user_id, user_id_list):
     fig = go.Figure()
     start_lon, start_lat = 0, 0
+    for user_id in user_id_list:
+        color = trips_group_by_user_id[user_id]['color']
+        trips = trips_group_by_user_id[user_id]['trips']
+        start_coordinates = [trip['start_coordinates'] for trip in trips]
+        end_coordinates = [trip['end_coordinates'] for trip in trips]
+        n = len(start_coordinates)
 
-    if group is not None:
-        if user_id is None:
-            user_id = list(group.groups.keys())[0]
-        if user_id is not None:
-            trips = group.get_group(user_id)
-            trips.sort_values('trip_start_time_str')
-            start_coordinates = trips['start_coordinates'].values.tolist()
-            end_coordinates = trips['end_coordinates'].values.tolist()
-            n = len(start_coordinates)
+        for i in range(n):
+            if i == 0:
+                start_lon = start_coordinates[i][0]
+                start_lat = end_coordinates[i][1]
 
-            for i in range(n):
-                if i == 0:
-                    start_lon = start_coordinates[i][0]
-                    start_lat = end_coordinates[i][1]
-
-                fig.add_trace(
-                    go.Scattermapbox(
-                        mode="markers+lines",
-                        lon=[start_coordinates[i][0], end_coordinates[i][0]],
-                        lat=[start_coordinates[i][1], end_coordinates[i][1]],
-                        marker={'size': 10},
-                        legendrank=i + 1,
-                    )
+            fig.add_trace(
+                go.Scattermapbox(
+                    mode="markers+lines",
+                    lon=[start_coordinates[i][0], end_coordinates[i][0]],
+                    lat=[start_coordinates[i][1], end_coordinates[i][1]],
+                    marker={'size': 10, 'color': color},
+                    legendrank=i + 1,
                 )
+            )
 
     fig.update_layout(
-        legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=0.01
-        ),
+        showlegend=False,
         margin={'l': 0, 't': 30, 'b': 0, 'r': 0},
         mapbox={
             'style': "stamen-terrain",
@@ -60,46 +51,40 @@ def create_fig_for_user(group, user_id):
         height=700,
     )
 
-    return fig, user_id
+    return fig
 
 
-def get_trips_df_in_date_range(trips_df, start_date, end_date):
-    trips_df['trip_start_time'] = pd.to_datetime(trips_df['trip_start_time_str'], utc=True)
-    if start_date is not None:
-        start_time = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
-        trips_df = trips_df[trips_df['trip_start_time'] >= start_time]
-    if end_date is not None:
-        end_time = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
-        trips_df = trips_df[trips_df['trip_start_time'] < end_time]
-    return trips_df
-
-def get_output_data(trips_df, user_id):
-    group = None
-    options = []
+def get_trips_group_by_user_id(trips_data):
+    trips_group_by_user_id = None
+    trips_df = pd.DataFrame(trips_data['data'])
     if not trips_df.empty:
-        group = trips_df.groupby('user_id')
-        options = [user_id for user_id in group.groups.keys()]
-    fig, user_id = create_fig_for_user(group, user_id)
-    return options, user_id, fig
+        trips_group_by_user_id = trips_df.groupby('user_id')
+    return trips_group_by_user_id
+
+
+def create_user_ids_options(trips_group_by_user_id):
+    options = list()
+    for user_id in trips_group_by_user_id:
+        color = trips_group_by_user_id[user_id]['color']
+        options.append({
+            'label': html.Span(
+                [
+                    html.Div(id='dropdown-squares', style={'background-color': color}),
+                    html.Span(user_id, style={'font-size': 15, 'padding-left': 10})
+                ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center'}
+            ),
+            'value': user_id
+        })
+    return options
 
 
 layout = html.Div(
     [
+        dcc.Store(id="store-trips-map", data={}),
         dcc.Markdown(intro),
         dbc.Row([
             dbc.Col(
-                dcc.DatePickerRange(
-                    id='map-date-picker',
-                    display_format='D/M/Y',
-                    start_date_placeholder_text='D/M/Y',
-                    end_date_placeholder_text='D/M/Y',
-                    min_date_allowed=date(2010, 1, 1),
-                    max_date_allowed=date.today(),
-                    initial_visible_month=date.today(),
-                )
-            ),
-            dbc.Col(
-                dcc.Dropdown(id='user-dropdown'),
+                dcc.Dropdown(id='user-dropdown', multi=True),
             )
         ]),
 
@@ -109,19 +94,40 @@ layout = html.Div(
     ]
 )
 
-
 @callback(
     Output('user-dropdown', 'options'),
     Output('user-dropdown', 'value'),
-    Output('trip-map', 'figure'),
-    Input('store-trips', 'data'),
-    Input('map-date-picker', 'start_date'),
-    Input('map-date-picker', 'end_date'),
+    Input('store-trips-map', 'data'),
     Input('user-dropdown', 'value'),
 )
-def update_output(data, start_date, end_date, value):
-    start_date_obj = date.fromisoformat(start_date) if start_date else None
-    end_date_obj = date.fromisoformat(end_date) if end_date else None
-    trips_df = pd.DataFrame(data['data'])
-    trips_df = get_trips_df_in_date_range(trips_df, start_date_obj, end_date_obj)
-    return get_output_data(trips_df, value)
+def update_user_ids_options(trips_data, selected_user_ids):
+    user_ids_options = create_user_ids_options(trips_data)
+    if selected_user_ids is not None:
+        selected_user_ids = [user_id for user_id in selected_user_ids if user_id in trips_data]
+    return user_ids_options, selected_user_ids
+
+@callback(
+    Output('trip-map', 'figure'),
+    Input('store-trips-map', 'data'),
+    Input('user-dropdown', 'value'),
+)
+def update_output(trips_data, user_id_list):
+    user_id_list = user_id_list if user_id_list is not None else []
+    return create_fig(trips_data, user_id_list)
+
+@callback(
+    Output('store-trips-map', 'data'),
+    Input('store-trips', 'data'),
+)
+def store_trips_map_data(trips_data):
+    trips_group_by_user_id = get_trips_group_by_user_id(trips_data)
+    saved_data = dict()
+    if trips_group_by_user_id:
+        user_ids = list(trips_group_by_user_id)
+        n = len(user_ids) % 360
+        k = 359 // (n - 1) if n > 1 else 0
+        for ind, user_id in enumerate(trips_group_by_user_id.groups.keys()):
+            color = f'hsl({ind * k}, 100%, 50%)'
+            trips = trips_group_by_user_id.get_group(user_id).sort_values('trip_start_time_str').to_dict("records")
+            saved_data[user_id] = {'color': color, 'trips': trips}
+    return saved_data

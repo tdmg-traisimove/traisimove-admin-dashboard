@@ -12,6 +12,7 @@ import dash_bootstrap_components as dbc
 
 # Etc
 import pandas as pd
+from dash.exceptions import PreventUpdate
 
 register_page(__name__, path="/data")
 
@@ -50,9 +51,13 @@ layout = html.Div(
 def render_content(tab, n_intervals, store_uuids, store_trips):
     if tab == 'tab-uuids-datatable':
         df = pd.DataFrame(store_uuids["data"])
+        if df.empty:
+            raise PreventUpdate
         return populate_datatable(df)
     elif tab == 'tab-trips-datatable':
         df = pd.DataFrame(store_trips["data"])
+        if df.empty:
+            raise PreventUpdate
         df = df.drop(columns=["start_coordinates", "end_coordinates"])
         return populate_datatable(df)
 
