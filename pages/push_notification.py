@@ -4,8 +4,14 @@ be in app.py.  Since the dcc.Location component is not in the layout when naviga
 The workaround is to check if the input value is None.
 
 """
+from uuid import UUID
+
 from dash import dcc, html, Input, Output, callback, register_page
 import pandas as pd
+
+import emission.storage.decorations.user_queries as esdu
+import emission.core.wrapper.user as ecwu
+import emission.net.ext_service.push.notify_usage as pnu
 
 register_page(__name__, path="/push_notification")
 
@@ -42,9 +48,24 @@ layout = html.Div([
 
             html.Br(),
             html.Label('Survey Specs'),
-            dcc.Dropdown(options=["Notify", "Survey", "Popup", "Website"], value='Notify'),
+            dcc.Dropdown(options=["Notify", "Survey", "Popup", "Website"], value='Notify', id='push-survey-spec'),
 
             html.Br(),
+            dcc.Checklist(
+                className='radio-items',
+                id='push-log-options',
+                options=[
+                    {'label': 'Show UUIDs', 'value': 'show-uuids'},
+                    {'label': 'Show Emails', 'value': 'show-emails'},
+                    {'label': 'Dry Run', 'value': 'dry-run'},
+                ],
+                value=['show-uuids'],
+                style={
+                    'padding': '5px',
+                    'margin': 'auto'
+                }
+            ),
+
             html.Label('Log Messages'),
             dcc.Textarea(value='We can follow sending push here', id='push-log', disabled=True, style={
                 'font-size': '14px', 'width': '100%', 'display': 'block', 'margin-bottom': '10px',
@@ -129,15 +150,40 @@ def clear_push_message(n_clicks):
     Input('push-receiver-options', 'value'),
     Input('push-user-emails', 'value'),
     Input('push-user-uuids', 'value'),
+    Input('push-log-options', 'value'),
+    Input('push-title', 'value'),
+    Input('push-message', 'value'),
+    Input('push-survey-spec', 'value',)
 )
-def send_push_notification(log, send_n_clicks, receiver, emails, uuids):
+def send_push_notification(log, send_n_clicks, query_spec, emails, uuids, log_options, title, message, survey_spec):
     if send_n_clicks > 0:
-        if receiver == 'all':
-            return "About to send push to all users", 0
-        elif receiver == 'email':
-            return f"About to send push to email list = {emails}", 0
-        elif receiver == 'uuid':
-            return f"About to send push to uuid list = {uuids}", 0
+        logs = list()
+        if query_spec == 'all':
+            uuid_list = esdu.get_all_uuids()
+        elif query_spec == 'email':
+            uuid_list = [ecwu.User.fromEmail(email).uuid for email in emails]
+        elif query_spec == 'uuid':
+            uuid_list = [UUID(uuid_str) for uuid_str in uuids]
         else:
-            return 'send clicked', 0
+            uuid_list = []
+
+        if 'show-uuids' in log_options:
+            uuid_str_list = [str(uuid_val.as_uuid(3)) for uuid_val in uuid_list]
+            logs.append(f"About to send push to uuid list = {uuid_str_list}")
+        if 'show-emails' in log_options:
+            email_list = [ecwu.User.fromUUID(uuid_val)._User__email for uuid_val in uuid_list if uuid_val is not None]
+            logs.append(f"About to send push to email list = {email_list}")
+
+        if 'dry-run' in log_options:
+            logs.append("dry run, skipping actual push")
+            return "\n".join(logs), 0
+        else:
+            return "\n".join(logs), 0
+            # response = pnu.send_visible_notification_to_users(
+            #     uuid_list,
+            #     title,
+            #     message,
+            #     survey_spec,
+            # )
+            # pnu.display_response(response)
     return log, 0

@@ -76,3 +76,7 @@
   padding: 0 7px;
   flex: 1;
 }
+
+.radio-items > label > input{
+  margin: 0 3px;
+}
