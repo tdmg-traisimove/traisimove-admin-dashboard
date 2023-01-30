@@ -18,6 +18,7 @@ def saveAsQRCode(outdir, token):
     draw.text((55,10), token, fill=0, align="center", anchor="mm")
     qrcode_filename = outdir+"/"+token+".png"
     qrcode_img.save(qrcode_filename)
+    return qrcode_filename
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog="generate_login_qr_codes")
