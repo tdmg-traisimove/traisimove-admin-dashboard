@@ -13,7 +13,7 @@ import emission.core.get_database as edb
 register_page(__name__, path="/tokens")
 
 intro = """## Tokens"""
-QRCODE_PATH = '/home/alireza/WorkSpace/Fourstep/Dashboard/qrcodes'
+QRCODE_PATH = 'assets/qrcodes'
 
 layout = html.Div(
     [
@@ -90,7 +90,7 @@ def populate_datatable():
     if df.empty:
         raise PreventUpdate
     df['id'] = df.index + 1
-    df['qr_code'] = "<img src='" + QRCODE_PATH + "/" + df['token'] + ".png' />"
+    df['qr_code'] = "<img src='" + QRCODE_PATH + "/" + df['token'] + ".png' height='100px' />"
     df = df.reindex(columns=['id', 'token', 'qr_code'])
     return dash_table.DataTable(
         id='tokens-table',
