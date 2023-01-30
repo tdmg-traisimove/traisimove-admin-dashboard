@@ -1,15 +1,14 @@
-from dash import dcc, html, Input, Output, callback, State, register_page, dash_table
-import dash_bootstrap_components as dbc
-
-# Etc
 import pandas as pd
-from datetime import datetime
+
+import dash_bootstrap_components as dbc
+from dash import dcc, html, Input, Output, callback, State, register_page, dash_table
 from dash.exceptions import PreventUpdate
 
 from emission.storage.decorations.token_queries import insert_many_tokens
 from opadmindash.generate_qr_codes import saveAsQRCode
 from opadmindash.generate_random_tokens import generateRandomTokensForProgram
 import emission.core.get_database as edb
+
 
 register_page(__name__, path="/tokens")
 
@@ -64,61 +63,35 @@ layout = html.Div(
                 sm=6,
             ),
         ]),
-        html.Div(id='tokens-table'),
+        html.Div(id='token-table'),
     ]
 )
 
 @callback(
     Output('token-generate', 'n_clicks'),
-    Output('tokens-table', 'children'),
+    Output('token-table', 'children'),
+    Input('token-generate', 'n_clicks'),
     State('token-program', 'value'),
     State('token-length', 'value'),
     State('token-count', 'value'),
     State('token-format', 'value'),
-    Input('token-generate', 'n_clicks'),
 )
-def generate_tokens(program, token_length, token_count, out_format, n_clicks):
+def generate_tokens(n_clicks, program, token_length, token_count, out_format):
     if n_clicks is not None and n_clicks > 0:
         tokens = generateRandomTokensForProgram(program, token_length, token_count, out_format)
         insert_many_tokens(tokens)
         for token in tokens:
             saveAsQRCode(QRCODE_PATH, token)
+    tokens_table = populate_datatable()
+    return 0, tokens_table
 
-    return 0, populate_datatable()
-
-# @callback(
-#     Output('tabs-content', 'children'),
-#     [
-#         Input('tabs-datatable', 'value'),
-#         Input('interval-component', 'n_intervals'),
-#         Input('store-uuids', 'data'),
-#         Input('store-trips', 'data')
-#     ]
-# )
-# def render_content(tab, n_intervals, store_uuids, store_trips):
-#     if tab == 'tab-uuids-datatable':
-#         df = pd.DataFrame(store_uuids["data"])
-#         if df.empty:
-#             raise PreventUpdate
-#         return populate_datatable(df)
-#     elif tab == 'tab-trips-datatable':
-#         print(store_trips)
-#         df = pd.DataFrame(store_trips["data"])
-#         if df.empty:
-#             raise PreventUpdate
-#         df = df.drop(columns=["start_coordinates", "end_coordinates"])
-#         return populate_datatable(df)
-#     elif tab == 'tab-tokens-datatable':
-#         pass
-#
 def populate_datatable():
     df = query_tokens()
     if df.empty:
-        pass
+        raise PreventUpdate
     df['id'] = df.index + 1
     df['qr_code'] = "<img src='" + QRCODE_PATH + "/" + df['token'] + ".png' />"
     df = df.reindex(columns=['id', 'token', 'qr_code'])
-    print(df)
     return dash_table.DataTable(
         id='tokens-table',
         css=[dict(selector="p", rule="margin: 0px;")],
@@ -130,7 +103,6 @@ def populate_datatable():
         data=df.to_dict('records'),
         export_format="csv",
         filter_options={"case": "sensitive"},
-        # filter_action="native",
         sort_action="native",  # give user capability to sort columns
         sort_mode="single",  # sort across 'multi' or 'single' columns
         page_current=0,  # page number that user is on
