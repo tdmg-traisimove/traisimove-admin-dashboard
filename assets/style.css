@@ -72,6 +72,14 @@
   padding: 2rem 1rem;
 }
 
+.radio-items > label {
+  padding: 0 7px;
+  flex: 1;
+}
+
+.radio-items > label > input{
+  margin: 0 3px;
+}
 
 #dropdown-squares {
   width: 10px;
