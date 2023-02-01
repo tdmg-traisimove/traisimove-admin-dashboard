@@ -10,6 +10,8 @@ import dash
 from dash import dcc, html, Input, Output, State, callback, register_page
 import dash_bootstrap_components as dbc
 from datetime import date
+
+from dash.exceptions import PreventUpdate
 from plotly import graph_objs as go
 import plotly.express as px
 
@@ -95,8 +97,10 @@ def update_card_users(store_uuids):
 )
 def update_card_active_users(store_uuids):
     uuid_df = pd.DataFrame(store_uuids.get('data'))
-    ONE_DAY = 100 * 24 * 60 * 60
-    number_of_active_users = get_number_of_active_users(uuid_df['user_id'], ONE_DAY)
+    number_of_active_users = 0
+    if not uuid_df.empty:
+        ONE_DAY = 100 * 24 * 60 * 60
+        number_of_active_users = get_number_of_active_users(uuid_df['user_id'], ONE_DAY)
     card = generate_card("# Active users", f"{number_of_active_users} users", "fa fa-person-walking")
     return card
 
@@ -128,7 +132,9 @@ def generate_card(title_text, body_text, icon):
     return card
 
 def generate_barplot(data, x, y, title):
-    fig = px.bar(data, x=x, y=y)
+    fig = px.bar()
+    if data is not None:
+        fig = px.bar(data, x=x, y=y)
     fig.update_layout(title=title)
     return fig
 
@@ -139,7 +145,9 @@ def generate_barplot(data, x, y, title):
 )
 def generate_plot_sign_up_trend(store_uuids):
     df = pd.DataFrame(store_uuids.get("data"))
-    trend_df = compute_sign_up_trend(df)
+    trend_df = None
+    if not df.empty:
+        trend_df = compute_sign_up_trend(df)
     fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Sign-ups trend")
     return fig
 
@@ -149,7 +157,9 @@ def generate_plot_sign_up_trend(store_uuids):
 )
 def generate_plot_trips_trend(store_trips):
     df = pd.DataFrame(store_trips.get("data"))
-    trend_df = compute_trips_trend(df, date_col = "trip_start_time_str")
+    trend_df = None
+    if not df.empty:
+        trend_df = compute_trips_trend(df, date_col = "trip_start_time_str")
     fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Trips trend")
     return fig
 
