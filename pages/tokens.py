@@ -1,3 +1,6 @@
+import os
+import zipfile
+
 import pandas as pd
 
 import dash_bootstrap_components as dbc
@@ -5,9 +8,10 @@ from dash import dcc, html, Input, Output, callback, State, register_page, dash_
 from dash.exceptions import PreventUpdate
 
 from emission.storage.decorations.token_queries import insert_many_tokens
+import emission.core.get_database as edb
+
 from opadmindash.generate_qr_codes import saveAsQRCode
 from opadmindash.generate_random_tokens import generateRandomTokensForProgram
-import emission.core.get_database as edb
 
 
 register_page(__name__, path="/tokens")
@@ -52,18 +56,30 @@ layout = html.Div(
                     dcc.Dropdown(options=['url safe', 'hex', 'base64'], value='url safe', id='token-format'),
 
                     html.Br(),
-                    html.Button(children='Generate Tokens', id='token-generate', n_clicks=0, style={
-                        'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
-                        'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
-                        'color': 'white',
-                    }),
+                    html.Div([
+                        html.Button(children='Generate Tokens', id='token-generate', n_clicks=0, style={
+                            'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
+                            'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
+                            'color': 'white',
+                        }),
+                        dcc.Download(id='download-token'),
+                    ])
+
                 ],
                 xl=3,
                 lg=4,
                 sm=6,
             ),
         ]),
+
         html.Div(id='token-table'),
+
+        html.Br(),
+        html.Button(children='Export QR codes', id='token-export', n_clicks=0, style={
+            'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
+            'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
+            'color': 'white',
+        }),
     ]
 )
 
@@ -85,6 +101,24 @@ def generate_tokens(n_clicks, program, token_length, token_count, out_format):
     tokens_table = populate_datatable()
     return 0, tokens_table
 
+
+@callback(
+    Output('token-export', 'n_clicks'),
+    Output('download-token', 'data'),
+    Input('token-export', 'n_clicks'),
+    prevent_initial_call=True,
+)
+def export_tokens(n_clicks):
+    def zip_directory(bytes_io):
+        with zipfile.ZipFile(bytes_io, mode="w") as zf:
+            len_dir_path = len(QRCODE_PATH)
+            for root, _, files in os.walk(QRCODE_PATH):
+                for img in files:
+                    file_path = os.path.join(root, img)
+                    zf.write(file_path, file_path[len_dir_path:])
+    return 0, dcc.send_bytes(zip_directory, "tokens.zip")
+
+
 def populate_datatable():
     df = query_tokens()
     if df.empty:
@@ -101,7 +135,6 @@ def populate_datatable():
             {"id": "qr_code", "name": "qr_code", "presentation": "markdown"},
         ],
         data=df.to_dict('records'),
-        export_format="csv",
         filter_options={"case": "sensitive"},
         sort_action="native",  # give user capability to sort columns
         sort_mode="single",  # sort across 'multi' or 'single' columns
