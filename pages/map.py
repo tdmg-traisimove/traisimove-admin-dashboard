@@ -215,7 +215,7 @@ def update_output(map_type, selected_user_ids, selected_user_emails, trips_data)
     user_ids = set(selected_user_ids) if selected_user_ids is not None else set()
     if selected_user_emails is not None:
         for user_email in selected_user_emails:
-            user_ids.add(str(ecwu.User.fromEmail(user_email).uuid.as_uuid(3)))
+            user_ids.add(ecwu.User.fromEmail(user_email).uuid.hex)
 
     if map_type == 'lines':
         return create_lines_map(trips_data['users_data'], user_ids)
