@@ -80,6 +80,14 @@ sidebar = html.Div(
                 ),
                 dbc.NavLink(
                     [
+                        html.I(className="fas fa-solid fa-right-to-bracket me-2"),
+                        html.Span("Tokens"),
+                    ],
+                    href="/tokens",
+                    active="exact",
+                ),
+                dbc.NavLink(
+                    [
                         html.I(className="fas fa-solid fa-globe me-2"),
                         html.Span("Map"),
                     ],

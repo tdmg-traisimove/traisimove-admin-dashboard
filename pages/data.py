@@ -4,15 +4,13 @@ be in app.py.  Since the dcc.Location component is not in the layout when naviga
 The workaround is to check if the input value is None.
 
 """
-
-import dash
-from dash import dcc, html, Input, Output, State, callback, register_page
+from dash import dcc, html, Input, Output, callback, register_page
 import dash_table
-import dash_bootstrap_components as dbc
 
 # Etc
 import pandas as pd
 from dash.exceptions import PreventUpdate
+
 
 register_page(__name__, path="/data")
 
@@ -24,20 +22,15 @@ intro = """
 layout = html.Div(
     [   
         dcc.Markdown(intro),
-        # dcc.DatePickerRange(
-        #             display_format='D/M/Y',
-        #             start_date_placeholder_text='D/M/Y',
-        #             end_date_placeholder_text='D/M/Y',
-        #             start_date=date(2017, 6, 21)
-        # ),
         dcc.Tabs(id="tabs-datatable", value='tab-uuids-datatable', children=[
             # dcc.Tab(label='Demographics survey', value='tab-demographics-survey-datatable'),
             dcc.Tab(label='UUIDs', value='tab-uuids-datatable'),
-            dcc.Tab(label='Trips', value='tab-trips-datatable')
+            dcc.Tab(label='Trips', value='tab-trips-datatable'),
         ]),
-        html.Div(id='tabs-content')
+        html.Div(id='tabs-content'),
     ]
 )
+
 
 @callback(
     Output('tabs-content', 'children'),
@@ -60,6 +53,7 @@ def render_content(tab, n_intervals, store_uuids, store_trips):
             raise PreventUpdate
         df = df.drop(columns=["start_coordinates", "end_coordinates"])
         return populate_datatable(df)
+
 
 def populate_datatable(df):
     if not isinstance(df, pd.DataFrame):
