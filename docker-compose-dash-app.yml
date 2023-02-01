@@ -18,8 +18,12 @@ services:
        - emission
     volumes:
       - ./pages:/usr/src/app/pages
+      - ./opadmindash:/usr/src/app/opadmindash
       - ./app.py:/usr/src/app/app.py
       - ./app_sidebar_collapsible.py:/usr/src/app/app_sidebar_collapsible.py
+    deploy:
+      restart_policy:
+          condition: on-failure
   db:
     image: mongo:4.4.0
     deploy:
