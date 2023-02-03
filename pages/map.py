@@ -6,7 +6,6 @@ workaround is to check if the input value is None.
 """
 from uuid import UUID
 
-from bson import Binary
 from dash import dcc, html, Input, Output, State, callback, register_page
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -134,7 +133,7 @@ def create_user_emails_options(trips_group_by_user_id):
     user_emails = set()
     for user_id in trips_group_by_user_id:
         color = trips_group_by_user_id[user_id]['color']
-        user_email = ecwu.User.fromUUID(Binary.from_uuid(UUID(user_id), 3))._User__email
+        user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
         user_emails.add(user_email)
         options.append(create_single_option(user_email, color))
     return options, user_emails
@@ -215,7 +214,7 @@ def update_output(map_type, selected_user_ids, selected_user_emails, trips_data)
     user_ids = set(selected_user_ids) if selected_user_ids is not None else set()
     if selected_user_emails is not None:
         for user_email in selected_user_emails:
-            user_ids.add(ecwu.User.fromEmail(user_email).uuid.hex)
+            user_ids.add(str(ecwu.User.fromEmail(user_email).uuid))
 
     if map_type == 'lines':
         return create_lines_map(trips_data['users_data'], user_ids)

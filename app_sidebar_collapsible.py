@@ -187,10 +187,7 @@ def query_uuids(start_date, end_date):
             inplace=True
         )
         df['update_ts'] = pd.to_datetime(df['update_ts'])
-        df['user_id'] = df['user_id'].apply(
-            # binary_uuid is a UUID object, convert it to string
-            lambda binary_uuid: binary_uuid.hex
-        )
+        df['user_id'] = df['user_id'].apply(str)
     return df
 
 def query_confirmed_trips(start_date, end_date):
@@ -224,9 +221,7 @@ def query_confirmed_trips(start_date, end_date):
     )
     df = pd.json_normalize(list(query_result))
     if not df.empty:
-        df['user_id'] = df['user_id'].apply(
-            lambda binary_uuid: binary_uuid.hex
-        )
+        df['user_id'] = df['user_id'].apply(str)
     return df
 
 @app.callback(

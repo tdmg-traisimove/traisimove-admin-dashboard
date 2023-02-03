@@ -168,7 +168,7 @@ def send_push_notification(log, send_n_clicks, query_spec, emails, uuids, log_op
             uuid_list = []
 
         if 'show-uuids' in log_options:
-            uuid_str_list = [uuid_val.hex for uuid_val in uuid_list]
+            uuid_str_list = [str(uuid_val) for uuid_val in uuid_list]
             logs.append(f"About to send push to uuid list = {uuid_str_list}")
         if 'show-emails' in log_options:
             email_list = [ecwu.User.fromUUID(uuid_val)._User__email for uuid_val in uuid_list if uuid_val is not None]
