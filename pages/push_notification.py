@@ -13,6 +13,8 @@ import emission.storage.decorations.user_queries as esdu
 import emission.core.wrapper.user as ecwu
 import emission.net.ext_service.push.notify_usage as pnu
 
+from opadmindash.permissions import has_permission
+
 register_page(__name__, path="/push_notification")
 
 intro = """
@@ -96,7 +98,7 @@ layout = html.Div([
                 'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
                 'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
                 'color': 'white',
-            }),
+            }, disabled=not has_permission('push_send')),
             html.Button(children='Clear Message', id='push-clear-message-button', n_clicks=0, style={
                 'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
                 'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'red',
@@ -127,19 +129,22 @@ def handle_receivers(value):
     Input('store-uuids', 'data'),
 )
 def populate_data(uuids_data):
+    emails = list()
+    uuids = list()
     uuids_df = pd.DataFrame(uuids_data.get('data'))
-    emails = uuids_df['user_token'].tolist()
-    uuids = uuids_df['user_id'].tolist()
+    if has_permission('options_emails'):
+        emails = uuids_df['user_token'].tolist()
+    if has_permission('options_uuids'):
+        uuids = uuids_df['user_id'].tolist()
     return emails, uuids
 
 
 @callback(
     Output('push-message', 'value'),
-    Output('push-clear-message-button', 'n_clicks'),
     Input('push-clear-message-button', 'n_clicks'),
 )
 def clear_push_message(n_clicks):
-    return '', 0
+    return ''
 
 
 @callback(

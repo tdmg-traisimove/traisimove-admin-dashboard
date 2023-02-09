@@ -13,6 +13,8 @@ import plotly.graph_objects as go
 
 import emission.core.wrapper.user as ecwu
 
+from opadmindash.permissions import has_permission
+
 register_page(__name__, path="/map")
 
 intro = """## Map"""
@@ -21,27 +23,28 @@ intro = """## Map"""
 def create_lines_map(trips_group_by_user_id, user_id_list):
     fig = go.Figure()
     start_lon, start_lat = 0, 0
-    for user_id in user_id_list:
-        color = trips_group_by_user_id[user_id]['color']
-        trips = trips_group_by_user_id[user_id]['trips']
-        start_coordinates = [trip['start_coordinates'] for trip in trips]
-        end_coordinates = [trip['end_coordinates'] for trip in trips]
-        n = len(start_coordinates)
+    if has_permission('map_trip_lines'):
+        for user_id in user_id_list:
+            color = trips_group_by_user_id[user_id]['color']
+            trips = trips_group_by_user_id[user_id]['trips']
+            start_coordinates = [trip['start_coordinates'] for trip in trips]
+            end_coordinates = [trip['end_coordinates'] for trip in trips]
+            n = len(start_coordinates)
 
-        for i in range(n):
-            if i == 0:
-                start_lon = start_coordinates[i][0]
-                start_lat = end_coordinates[i][1]
+            for i in range(n):
+                if i == 0:
+                    start_lon = start_coordinates[i][0]
+                    start_lat = end_coordinates[i][1]
 
-            fig.add_trace(
-                go.Scattermapbox(
-                    mode="markers+lines",
-                    lon=[start_coordinates[i][0], end_coordinates[i][0]],
-                    lat=[start_coordinates[i][1], end_coordinates[i][1]],
-                    marker={'size': 10, 'color': color},
-                    legendrank=i + 1,
+                fig.add_trace(
+                    go.Scattermapbox(
+                        mode="markers+lines",
+                        lon=[start_coordinates[i][0], end_coordinates[i][0]],
+                        lat=[start_coordinates[i][1], end_coordinates[i][1]],
+                        marker={'size': 10, 'color': color},
+                        legendrank=i + 1,
+                    )
                 )
-            )
 
     fig.update_layout(
         showlegend=False,
@@ -58,7 +61,7 @@ def create_lines_map(trips_group_by_user_id, user_id_list):
 
 def create_heatmap_fig(data):
     fig = go.Figure()
-    if len(data['lat']) > 0:
+    if len(data['lat']) > 0 and has_permission('map_heatmap'):
         fig.add_trace(go.Densitymapbox(
             lon=data['lon'],
             lat=data['lat'],
@@ -76,7 +79,7 @@ def create_heatmap_fig(data):
 
 def create_bubble_fig(data):
     fig = go.Figure()
-    if len(data['lon']) > 0:
+    if len(data['lon']) > 0 and has_permission('map_bubble'):
         fig.add_trace(
             go.Scattermapbox(
                 lat=data['lat'],
@@ -122,20 +125,22 @@ def create_single_option(value, color):
 def create_user_ids_options(trips_group_by_user_id):
     options = list()
     user_ids = set()
-    for user_id in trips_group_by_user_id:
-        color = trips_group_by_user_id[user_id]['color']
-        user_ids.add(user_id)
-        options.append(create_single_option(user_id, color))
+    if has_permission('options_uuids'):
+        for user_id in trips_group_by_user_id:
+            color = trips_group_by_user_id[user_id]['color']
+            user_ids.add(user_id)
+            options.append(create_single_option(user_id, color))
     return options, user_ids
 
 def create_user_emails_options(trips_group_by_user_id):
     options = list()
     user_emails = set()
-    for user_id in trips_group_by_user_id:
-        color = trips_group_by_user_id[user_id]['color']
-        user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
-        user_emails.add(user_email)
-        options.append(create_single_option(user_email, color))
+    if has_permission('options_emails'):
+        for user_id in trips_group_by_user_id:
+            color = trips_group_by_user_id[user_id]['color']
+            user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
+            user_emails.add(user_email)
+            options.append(create_single_option(user_email, color))
     return options, user_emails
 
 
