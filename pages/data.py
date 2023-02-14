@@ -3,14 +3,14 @@ Note that the callback will trigger even if prevent_initial_call=True. This is b
 Since the dcc.Location component is not in the layout when navigating to this page, it triggers the callback.
 The workaround is to check if the input value is None.
 """
-from dash import dcc, html, Input, Output, callback, register_page
-import dash_table
+from dash import dcc, html, Input, Output, callback, register_page, dash_table
 
 # Etc
 import pandas as pd
 from dash.exceptions import PreventUpdate
 
-from opadmindash.permissions import has_permission, get_trips_columns
+from opadmindash.constants import default_trip_columns
+from opadmindash.permissions import has_permission, get_uuids_columns
 
 register_page(__name__, path="/data")
 
@@ -42,19 +42,18 @@ def render_content(tab, store_uuids, store_trips):
         df = pd.DataFrame(store_uuids["data"])
         if df.empty or not has_permission('data_uuids'):
             return None
+        df = df.drop(columns=[col for col in df.columns if col not in get_uuids_columns()])
         return populate_datatable(df)
     elif tab == 'tab-trips-datatable':
         df = pd.DataFrame(store_trips["data"])
         if df.empty or not has_permission('data_trips'):
             return None
-        if 'data.start_loc' in get_trips_columns():
-            df['start_coordinates'] = df['start_coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
-        else:
-            df = df.drop(columns=['start_coordinates'])
-        if 'data.end_loc' in get_trips_columns():
-            df['end_coordinates'] = df['end_coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
-        else:
-            df = df.drop(columns=['end_coordinates'])
+        if 'data.start_loc.coordinates' in df.columns:
+            df['data.start_loc.coordinates'] = df['data.start_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+        if 'data.end_loc.coordinates' in df.columns:
+            df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+
+        df = df.drop(columns=[col for col in default_trip_columns if col in df.columns])
 
         return populate_datatable(df)
 

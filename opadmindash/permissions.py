@@ -1,7 +1,7 @@
 import json
 import requests
 
-from opadmindash.constants import valid_trip_columns, default_trip_columns, valid_uuids_columns, default_uuids_columns
+from opadmindash.constants import valid_trip_columns, valid_uuids_columns
 
 
 raw_url = "https://raw.githubusercontent.com/"
@@ -17,14 +17,14 @@ def has_permission(perm):
 def get_trips_columns():
     columns = list()
     for column in permissions.get("data_trips_columns", []):
-        if column in valid_trip_columns and column not in default_trip_columns:
+        if column in valid_trip_columns:
             columns.append(column)
-    return columns
+    return columns if columns else valid_trip_columns
 
 
 def get_uuids_columns():
     columns = list()
     for column in permissions.get("data_uuids_columns", []):
-        if column in valid_uuids_columns and column not in default_uuids_columns:
+        if column in valid_uuids_columns:
             columns.append(column)
-    return columns
+    return columns if columns else valid_uuids_columns
