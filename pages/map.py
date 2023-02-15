@@ -23,28 +23,27 @@ intro = """## Map"""
 def create_lines_map(trips_group_by_user_id, user_id_list):
     fig = go.Figure()
     start_lon, start_lat = 0, 0
-    if has_permission('map_trip_lines'):
-        for user_id in user_id_list:
-            color = trips_group_by_user_id[user_id]['color']
-            trips = trips_group_by_user_id[user_id]['trips']
-            start_coordinates = [trip['start_coordinates'] for trip in trips]
-            end_coordinates = [trip['end_coordinates'] for trip in trips]
-            n = len(start_coordinates)
+    for user_id in user_id_list:
+        color = trips_group_by_user_id[user_id]['color']
+        trips = trips_group_by_user_id[user_id]['trips']
+        start_coordinates = [trip['start_coordinates'] for trip in trips]
+        end_coordinates = [trip['end_coordinates'] for trip in trips]
+        n = len(start_coordinates)
 
-            for i in range(n):
-                if i == 0:
-                    start_lon = start_coordinates[i][0]
-                    start_lat = end_coordinates[i][1]
+        for i in range(n):
+            if i == 0:
+                start_lon = start_coordinates[i][0]
+                start_lat = end_coordinates[i][1]
 
-                fig.add_trace(
-                    go.Scattermapbox(
-                        mode="markers+lines",
-                        lon=[start_coordinates[i][0], end_coordinates[i][0]],
-                        lat=[start_coordinates[i][1], end_coordinates[i][1]],
-                        marker={'size': 10, 'color': color},
-                        legendrank=i + 1,
-                    )
+            fig.add_trace(
+                go.Scattermapbox(
+                    mode="markers+lines",
+                    lon=[start_coordinates[i][0], end_coordinates[i][0]],
+                    lat=[start_coordinates[i][1], end_coordinates[i][1]],
+                    marker={'size': 10, 'color': color},
+                    legendrank=i + 1,
                 )
+            )
 
     fig.update_layout(
         showlegend=False,
@@ -61,7 +60,7 @@ def create_lines_map(trips_group_by_user_id, user_id_list):
 
 def create_heatmap_fig(data):
     fig = go.Figure()
-    if len(data['lat']) > 0 and has_permission('map_heatmap'):
+    if len(data['lat']) > 0:
         fig.add_trace(go.Densitymapbox(
             lon=data['lon'],
             lat=data['lat'],
@@ -79,7 +78,7 @@ def create_heatmap_fig(data):
 
 def create_bubble_fig(data):
     fig = go.Figure()
-    if len(data['lon']) > 0 and has_permission('map_bubble'):
+    if len(data['lon']) > 0:
         fig.add_trace(
             go.Scattermapbox(
                 lat=data['lat'],
@@ -153,10 +152,10 @@ layout = html.Div(
             dbc.Col(
                 [
                     html.Label('Map Type'),
-                    dcc.Dropdown(id='map-type-dropdown', value='lines', options=[
-                        {'label': 'Density Heatmap', 'value': 'heatmap'},
-                        {'label': 'Bubble Map', 'value': 'bubble'},
-                        {'label': 'Trips Lines', 'value': 'lines'},
+                    dcc.Dropdown(id='map-type-dropdown', value='', options=[
+                        {'label': 'Density Heatmap', 'value': 'heatmap', 'disabled': not has_permission('map_heatmap')},
+                        {'label': 'Bubble Map', 'value': 'bubble', 'disabled': not has_permission('map_bubble')},
+                        {'label': 'Trips Lines', 'value': 'lines', 'disabled': not has_permission('map_trip_lines')},
                     ]),
                 ],
                 xl=3,
@@ -227,6 +226,8 @@ def update_output(map_type, selected_user_ids, selected_user_emails, trips_data)
         return create_heatmap_fig(trips_data['coordinates'])
     elif map_type == 'bubble':
         return create_bubble_fig(trips_data['coordinates'])
+    else:
+        return go.Figure()
 
 
 @callback(

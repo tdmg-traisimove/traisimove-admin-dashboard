@@ -11,7 +11,6 @@ import emission.core.get_database as edb
 
 from opadmindash.generate_qr_codes import saveAsQRCode
 from opadmindash.generate_random_tokens import generateRandomTokensForProgram
-from opadmindash.permissions import has_permission
 
 register_page(__name__, path="/tokens")
 
@@ -60,7 +59,7 @@ layout = html.Div(
                             'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
                             'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
                             'color': 'white',
-                        }, disabled=not has_permission('token_generate')),
+                        }),
                         dcc.Download(id='download-token'),
                     ])
 
@@ -78,7 +77,7 @@ layout = html.Div(
             'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
             'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
             'color': 'white',
-        }, disabled=not has_permission('token_download')),
+        }),
     ]
 )
 
@@ -119,7 +118,7 @@ def export_tokens(n_clicks):
 
 def populate_datatable():
     df = query_tokens()
-    if df.empty or not has_permission('token_view'):
+    if df.empty:
         return None
     df['id'] = df.index + 1
     df['qr_code'] = "<img src='" + QRCODE_PATH + "/" + df['token'] + ".png' height='100px' />"

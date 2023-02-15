@@ -12,7 +12,6 @@ import pandas as pd
 import emission.storage.decorations.user_queries as esdu
 import emission.core.wrapper.user as ecwu
 import emission.net.ext_service.push.notify_usage as pnu
-
 from opadmindash.permissions import has_permission
 
 register_page(__name__, path="/push_notification")
@@ -98,7 +97,7 @@ layout = html.Div([
                 'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
                 'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'green',
                 'color': 'white',
-            }, disabled=not has_permission('push_send')),
+            }),
             html.Button(children='Clear Message', id='push-clear-message-button', n_clicks=0, style={
                 'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
                 'margin-right': '5px', 'height':'40px', 'verticalAlign': 'top', 'background-color': 'red',

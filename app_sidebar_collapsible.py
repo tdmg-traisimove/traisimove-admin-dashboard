@@ -27,7 +27,7 @@ import emission.core.get_database as edb
 # Data/file handling imports
 import pathlib
 
-from opadmindash.permissions import get_trips_columns
+from opadmindash.permissions import get_trips_columns, has_permission
 
 OPENPATH_LOGO = "https://www.nrel.gov/transportation/assets/images/openpath-logo.jpg"
 
@@ -82,6 +82,7 @@ sidebar = html.Div(
                     ],
                     href="/tokens",
                     active="exact",
+                    disabled=not has_permission("token_generate"),
                 ),
                 dbc.NavLink(
                     [
@@ -98,6 +99,7 @@ sidebar = html.Div(
                     ],
                     href="/push_notification",
                     active="exact",
+                    disabled=not has_permission("push_send"),
                 ),
                 dbc.NavLink(
                     [
