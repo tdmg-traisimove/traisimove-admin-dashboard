@@ -5,14 +5,12 @@ import pandas as pd
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output, callback, State, register_page, dash_table
-from dash.exceptions import PreventUpdate
 
 from emission.storage.decorations.token_queries import insert_many_tokens
 import emission.core.get_database as edb
 
 from opadmindash.generate_qr_codes import saveAsQRCode
 from opadmindash.generate_random_tokens import generateRandomTokensForProgram
-
 
 register_page(__name__, path="/tokens")
 
@@ -103,7 +101,6 @@ def generate_tokens(n_clicks, program, token_length, token_count, out_format):
 
 
 @callback(
-    Output('token-export', 'n_clicks'),
     Output('download-token', 'data'),
     Input('token-export', 'n_clicks'),
     prevent_initial_call=True,
@@ -116,13 +113,13 @@ def export_tokens(n_clicks):
                 for img in files:
                     file_path = os.path.join(root, img)
                     zf.write(file_path, file_path[len_dir_path:])
-    return 0, dcc.send_bytes(zip_directory, "tokens.zip")
+    return dcc.send_bytes(zip_directory, "tokens.zip")
 
 
 def populate_datatable():
     df = query_tokens()
     if df.empty:
-        raise PreventUpdate
+        return None
     df['id'] = df.index + 1
     df['qr_code'] = "<img src='" + QRCODE_PATH + "/" + df['token'] + ".png' height='100px' />"
     df = df.reindex(columns=['id', 'token', 'qr_code'])

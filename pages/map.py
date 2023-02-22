@@ -13,6 +13,8 @@ import plotly.graph_objects as go
 
 import emission.core.wrapper.user as ecwu
 
+from opadmindash.permissions import has_permission
+
 register_page(__name__, path="/map")
 
 intro = """## Map"""
@@ -122,20 +124,22 @@ def create_single_option(value, color):
 def create_user_ids_options(trips_group_by_user_id):
     options = list()
     user_ids = set()
-    for user_id in trips_group_by_user_id:
-        color = trips_group_by_user_id[user_id]['color']
-        user_ids.add(user_id)
-        options.append(create_single_option(user_id, color))
+    if has_permission('options_uuids'):
+        for user_id in trips_group_by_user_id:
+            color = trips_group_by_user_id[user_id]['color']
+            user_ids.add(user_id)
+            options.append(create_single_option(user_id, color))
     return options, user_ids
 
 def create_user_emails_options(trips_group_by_user_id):
     options = list()
     user_emails = set()
-    for user_id in trips_group_by_user_id:
-        color = trips_group_by_user_id[user_id]['color']
-        user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
-        user_emails.add(user_email)
-        options.append(create_single_option(user_email, color))
+    if has_permission('options_emails'):
+        for user_id in trips_group_by_user_id:
+            color = trips_group_by_user_id[user_id]['color']
+            user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
+            user_emails.add(user_email)
+            options.append(create_single_option(user_email, color))
     return options, user_emails
 
 
@@ -148,10 +152,10 @@ layout = html.Div(
             dbc.Col(
                 [
                     html.Label('Map Type'),
-                    dcc.Dropdown(id='map-type-dropdown', value='lines', options=[
-                        {'label': 'Density Heatmap', 'value': 'heatmap'},
-                        {'label': 'Bubble Map', 'value': 'bubble'},
-                        {'label': 'Trips Lines', 'value': 'lines'},
+                    dcc.Dropdown(id='map-type-dropdown', value='', options=[
+                        {'label': 'Density Heatmap', 'value': 'heatmap', 'disabled': not has_permission('map_heatmap')},
+                        {'label': 'Bubble Map', 'value': 'bubble', 'disabled': not has_permission('map_bubble')},
+                        {'label': 'Trips Lines', 'value': 'lines', 'disabled': not has_permission('map_trip_lines')},
                     ]),
                 ],
                 xl=3,
@@ -222,6 +226,8 @@ def update_output(map_type, selected_user_ids, selected_user_emails, trips_data)
         return create_heatmap_fig(trips_data['coordinates'])
     elif map_type == 'bubble':
         return create_bubble_fig(trips_data['coordinates'])
+    else:
+        return go.Figure()
 
 
 @callback(

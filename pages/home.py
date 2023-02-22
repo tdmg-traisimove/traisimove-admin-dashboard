@@ -4,26 +4,19 @@ be in app.py.  Since the dcc.Location component is not in the layout when naviga
 The workaround is to check if the input value is None.
 
 """
-
-
-import dash
-from dash import dcc, html, Input, Output, State, callback, register_page
+from dash import dcc, html, Input, Output, callback, register_page
 import dash_bootstrap_components as dbc
-from datetime import date
 
-from dash.exceptions import PreventUpdate
-from plotly import graph_objs as go
 import plotly.express as px
 
 # Etc
 import pandas as pd
-from datetime import date
 import arrow
 
 # e-mission modules
 import emission.core.get_database as edb
-import emission.storage.decorations.user_queries as esdu
-import bin.debug.export_participants_trips_csv as eptc
+
+from opadmindash.permissions import has_permission
 
 register_page(__name__, path="/")
 
@@ -60,7 +53,6 @@ def find_last_get(uuid):
     return last_get
 
 def get_number_of_active_users(uuid_list, threshold):
-    now = arrow.get().timestamp
     last_get_entries = [find_last_get(npu) for npu in uuid_list]
     number_of_active_users = 0
     for uuid, lge in zip(uuid_list, last_get_entries):
@@ -72,7 +64,6 @@ def get_number_of_active_users(uuid_list, threshold):
 
 intro = """
 ## Home
-
 """
 
 card_icon = {
@@ -84,21 +75,21 @@ card_icon = {
 
 @callback(
     Output('card-users', 'children'),
-    [Input('store-uuids', 'data')]
+    Input('store-uuids', 'data'),
 )
 def update_card_users(store_uuids):
-    nrow = pd.DataFrame(store_uuids.get('data')).shape[0]
-    card = generate_card("# Users", f"{nrow} users", "fa fa-users")
+    number_of_users = pd.DataFrame(store_uuids.get('data')).shape[0] if has_permission('overview_users') else 0
+    card = generate_card("# Users", f"{number_of_users} users", "fa fa-users")
     return card
 
 @callback(
     Output('card-active-users', 'children'),
-    [Input('store-uuids', 'data')]
+    Input('store-uuids', 'data'),
 )
 def update_card_active_users(store_uuids):
     uuid_df = pd.DataFrame(store_uuids.get('data'))
     number_of_active_users = 0
-    if not uuid_df.empty:
+    if not uuid_df.empty and has_permission('overview_active_users'):
         ONE_DAY = 100 * 24 * 60 * 60
         number_of_active_users = get_number_of_active_users(uuid_df['user_id'], ONE_DAY)
     card = generate_card("# Active users", f"{number_of_active_users} users", "fa fa-person-walking")
@@ -106,11 +97,11 @@ def update_card_active_users(store_uuids):
 
 @callback(
     Output('card-trips', 'children'),
-    [Input('store-trips', 'data')]
+    Input('store-trips', 'data'),
 )
 def update_card_trips(store_trips):
-    nrow = pd.DataFrame(store_trips.get('data')).shape[0]
-    card = generate_card("# Confirmed trips", f"{nrow} trips", "fa fa-angles-right")
+    number_of_trips = pd.DataFrame(store_trips.get('data')).shape[0] if has_permission('overview_trips') else 0
+    card = generate_card("# Confirmed trips", f"{number_of_trips} trips", "fa fa-angles-right")
     return card
 
 def generate_card(title_text, body_text, icon): 
@@ -141,43 +132,32 @@ def generate_barplot(data, x, y, title):
 
 @callback(
     Output('fig-sign-up-trend', 'figure'),
-    [Input('store-uuids', 'data')]
+    Input('store-uuids', 'data'),
 )
 def generate_plot_sign_up_trend(store_uuids):
     df = pd.DataFrame(store_uuids.get("data"))
     trend_df = None
-    if not df.empty:
+    if not df.empty and has_permission('overview_signup_trends'):
         trend_df = compute_sign_up_trend(df)
     fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Sign-ups trend")
     return fig
 
 @callback(
     Output('fig-trips-trend', 'figure'),
-    [Input('store-trips', 'data')]
+    Input('store-trips', 'data'),
 )
 def generate_plot_trips_trend(store_trips):
     df = pd.DataFrame(store_trips.get("data"))
     trend_df = None
-    if not df.empty:
+    if not df.empty and has_permission('overview_trips_trend'):
         trend_df = compute_trips_trend(df, date_col = "trip_start_time_str")
     fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Trips trend")
     return fig
 
 
-
 layout = html.Div(
     [
-        # A data store. This can save JSON-formats or simple data like booleans or integers
-        dcc.Store(id='dataIsLoadedFlag', storage_type='memory'), # We can store JSON-izable data here, nothing too big
-
         dcc.Markdown(intro),
-
-        # dcc.DatePickerRange(
-        #             display_format='D/M/Y',
-        #             start_date_placeholder_text='D/M/Y',
-        #             end_date_placeholder_text='D/M/Y',
-        #             start_date=date(2017, 6, 21)
-        # ),
 
         # Cards 
         dbc.Row([

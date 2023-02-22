@@ -12,6 +12,7 @@ import pandas as pd
 import emission.storage.decorations.user_queries as esdu
 import emission.core.wrapper.user as ecwu
 import emission.net.ext_service.push.notify_usage as pnu
+from opadmindash.permissions import has_permission
 
 register_page(__name__, path="/push_notification")
 
@@ -127,19 +128,22 @@ def handle_receivers(value):
     Input('store-uuids', 'data'),
 )
 def populate_data(uuids_data):
+    emails = list()
+    uuids = list()
     uuids_df = pd.DataFrame(uuids_data.get('data'))
-    emails = uuids_df['user_token'].tolist()
-    uuids = uuids_df['user_id'].tolist()
+    if has_permission('options_emails'):
+        emails = uuids_df['user_token'].tolist()
+    if has_permission('options_uuids'):
+        uuids = uuids_df['user_id'].tolist()
     return emails, uuids
 
 
 @callback(
     Output('push-message', 'value'),
-    Output('push-clear-message-button', 'n_clicks'),
     Input('push-clear-message-button', 'n_clicks'),
 )
 def clear_push_message(n_clicks):
-    return '', 0
+    return ''
 
 
 @callback(
