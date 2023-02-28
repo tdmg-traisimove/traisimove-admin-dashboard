@@ -9,8 +9,8 @@ from dash import dcc, html, Input, Output, callback, State, register_page, dash_
 from emission.storage.decorations.token_queries import insert_many_tokens
 import emission.core.get_database as edb
 
-from opadmindash.generate_qr_codes import saveAsQRCode
-from opadmindash.generate_random_tokens import generateRandomTokensForProgram
+from utils.generate_qr_codes import saveAsQRCode
+from utils.generate_random_tokens import generateRandomTokensForProgram
 
 register_page(__name__, path="/tokens")
 
@@ -103,7 +103,6 @@ def generate_tokens(n_clicks, program, token_length, token_count, out_format):
 @callback(
     Output('download-token', 'data'),
     Input('token-export', 'n_clicks'),
-    prevent_initial_call=True,
 )
 def export_tokens(n_clicks):
     def zip_directory(bytes_io):
@@ -113,7 +112,9 @@ def export_tokens(n_clicks):
                 for img in files:
                     file_path = os.path.join(root, img)
                     zf.write(file_path, file_path[len_dir_path:])
-    return dcc.send_bytes(zip_directory, "tokens.zip")
+
+    if n_clicks > 0:
+        return dcc.send_bytes(zip_directory, "tokens.zip")
 
 
 def populate_datatable():

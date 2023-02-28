@@ -12,7 +12,7 @@ import pandas as pd
 import emission.storage.decorations.user_queries as esdu
 import emission.core.wrapper.user as ecwu
 import emission.net.ext_service.push.notify_usage as pnu
-from opadmindash.permissions import has_permission
+from utils.permissions import has_permission
 
 register_page(__name__, path="/push_notification")
 
