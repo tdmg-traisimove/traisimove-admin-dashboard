@@ -13,7 +13,7 @@ import plotly.graph_objects as go
 
 import emission.core.wrapper.user as ecwu
 
-from opadmindash.permissions import has_permission
+from utils.permissions import has_permission
 
 register_page(__name__, path="/map")
 

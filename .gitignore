@@ -7,3 +7,4 @@ bin/
 requirements2.txt
 assets/qrcodes
 data/tokens.csv
+config.py

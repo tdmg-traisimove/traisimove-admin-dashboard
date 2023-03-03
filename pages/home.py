@@ -16,7 +16,7 @@ import arrow
 # e-mission modules
 import emission.core.get_database as edb
 
-from opadmindash.permissions import has_permission
+from utils.permissions import has_permission
 
 register_page(__name__, path="/")
 

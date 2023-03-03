@@ -3,7 +3,7 @@ import os
 
 import requests
 
-from opadmindash.constants import valid_trip_columns, valid_uuids_columns
+from utils.constants import valid_trip_columns, valid_uuids_columns
 
 
 STUDY_CONFIG = os.getenv('STUDY_CONFIG')
