@@ -11,6 +11,7 @@ import emission.core.get_database as edb
 
 from utils.generate_qr_codes import saveAsQRCode
 from utils.generate_random_tokens import generateRandomTokensForProgram
+from utils.permissions import get_token_prefix
 
 register_page(__name__, path="/tokens")
 
@@ -92,7 +93,8 @@ layout = html.Div(
 )
 def generate_tokens(n_clicks, program, token_length, token_count, out_format):
     if n_clicks is not None and n_clicks > 0:
-        tokens = generateRandomTokensForProgram(program, token_length, token_count, out_format)
+        token_prefix = get_token_prefix() + program
+        tokens = generateRandomTokensForProgram(token_prefix, token_length, token_count, out_format)
         insert_many_tokens(tokens)
         for token in tokens:
             saveAsQRCode(QRCODE_PATH, token)
