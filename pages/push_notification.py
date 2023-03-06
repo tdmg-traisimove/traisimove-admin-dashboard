@@ -14,11 +14,19 @@ import emission.core.wrapper.user as ecwu
 import emission.net.ext_service.push.notify_usage as pnu
 from utils.permissions import has_permission
 
-register_page(__name__, path="/push_notification")
+
+if has_permission('push_send'):
+    register_page(__name__, path="/push_notification")
 
 intro = """
 ## Push notification
 """
+
+push_receiver_options = [{'label': 'All users', 'value': 'all'}]
+if has_permission('options_emails'):
+    push_receiver_options.append({'label': 'User Emails', 'value': 'email'})
+if has_permission('options_uuids'):
+    push_receiver_options.append({'label': 'User UUIDs', 'value': 'uuid'})
 
 
 layout = html.Div([
@@ -29,11 +37,7 @@ layout = html.Div([
             dcc.RadioItems(
                 className='radio-items',
                 id='push-receiver-options',
-                options=[
-                    {'label': 'All users', 'value': 'all'},
-                    {'label': 'User Emails', 'value': 'email'},
-                    {'label': 'User UUIDs', 'value': 'uuid'},
-                ],
+                options=push_receiver_options,
                 value='all',
                 style={
                     'padding': '5px',
@@ -41,11 +45,15 @@ layout = html.Div([
                 }
             ),
 
-            html.Label('User Emails', style={'padding-top': '5px'}),
-            dcc.Dropdown(multi=True, disabled=True, id='push-user-emails'),
+            html.Div([
+                html.Label('User Emails', style={'padding-top': '5px'}),
+                dcc.Dropdown(multi=True, disabled=True, id='push-user-emails'),
+            ], style={'display': 'block' if has_permission('options_emails') else 'none'}),
 
-            html.Label('UUIDs', style={'padding-top': '5px'}),
-            dcc.Dropdown(multi=True, disabled=True, id='push-user-uuids'),
+            html.Div([
+                html.Label('UUIDs', style={'padding-top': '5px'}),
+                dcc.Dropdown(multi=True, disabled=True, id='push-user-uuids'),
+            ], style={'display': 'block' if has_permission('options_uuids') else 'none'}),
 
             html.Br(),
             html.Label('Survey Specs'),

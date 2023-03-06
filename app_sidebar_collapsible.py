@@ -72,7 +72,7 @@ sidebar = html.Div(
                     ],
                     href="/tokens",
                     active="exact",
-                    disabled=not has_permission("token_generate"),
+                    style={'display': 'block' if has_permission('token_generate') else 'none'},
                 ),
                 dbc.NavLink(
                     [
@@ -89,7 +89,7 @@ sidebar = html.Div(
                     ],
                     href="/push_notification",
                     active="exact",
-                    disabled=not has_permission("push_send"),
+                    style={'display': 'block' if has_permission('push_send') else 'none'},
                 ),
                 dbc.NavLink(
                     [
