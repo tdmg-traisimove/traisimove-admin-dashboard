@@ -19,6 +19,7 @@ COPY app.py config.py app_sidebar_collapsible.py assets globals.py globalsUpdate
 
 WORKDIR /usr/src/app/assets
 COPY assets/style.css ./
+RUN mkdir qrcodes
 
 # copy over test data
 WORKDIR /usr/src/app/data
