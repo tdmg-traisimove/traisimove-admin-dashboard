@@ -29,3 +29,7 @@ def get_uuids_columns():
     for column in permissions.get("data_uuids_columns_exclude", []):
         columns.discard(column)
     return columns
+
+
+def get_token_prefix():
+    return permissions['token_prefix'] + '_' if permissions.get('token_prefix') else ''
