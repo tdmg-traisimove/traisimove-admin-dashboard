@@ -15,6 +15,7 @@ services:
       WEB_SERVER_HOST: 0.0.0.0
       SERVER_BRANCH: master
       STUDY_CONFIG: "admin-dashboard-permissions"
+      AUTH_TYPE: "basic" # the other option is cognito
     networks:
        - emission
     volumes:
