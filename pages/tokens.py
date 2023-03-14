@@ -11,9 +11,11 @@ import emission.core.get_database as edb
 
 from utils.generate_qr_codes import saveAsQRCode
 from utils.generate_random_tokens import generateRandomTokensForProgram
-from utils.permissions import get_token_prefix
+from utils.permissions import get_token_prefix, has_permission
 
-register_page(__name__, path="/tokens")
+
+if has_permission('token_generate'):
+    register_page(__name__, path="/tokens")
 
 intro = """## Tokens"""
 QRCODE_PATH = 'assets/qrcodes'

@@ -142,6 +142,14 @@ def create_user_emails_options(trips_group_by_user_id):
             options.append(create_single_option(user_email, color))
     return options, user_emails
 
+map_type_options = []
+if has_permission('map_heatmap'):
+    map_type_options.append({'label': 'Density Heatmap', 'value': 'heatmap'})
+if has_permission('map_bubble'):
+    map_type_options.append({'label': 'Bubble Map', 'value': 'bubble'})
+if has_permission('map_trip_lines'):
+    map_type_options.append({'label': 'Trips Lines', 'value': 'lines'})
+
 
 layout = html.Div(
     [
@@ -152,11 +160,7 @@ layout = html.Div(
             dbc.Col(
                 [
                     html.Label('Map Type'),
-                    dcc.Dropdown(id='map-type-dropdown', value='', options=[
-                        {'label': 'Density Heatmap', 'value': 'heatmap', 'disabled': not has_permission('map_heatmap')},
-                        {'label': 'Bubble Map', 'value': 'bubble', 'disabled': not has_permission('map_bubble')},
-                        {'label': 'Trips Lines', 'value': 'lines', 'disabled': not has_permission('map_trip_lines')},
-                    ]),
+                    dcc.Dropdown(id='map-type-dropdown', value='', options=map_type_options),
                 ],
                 xl=3,
                 lg=4,
@@ -168,11 +172,11 @@ layout = html.Div(
             dbc.Col([
                 html.Label('User UUIDs'),
                 dcc.Dropdown(id='user-id-dropdown', multi=True),
-            ]),
+            ], style={'display': 'block' if has_permission('options_uuids') else 'none'}),
             dbc.Col([
                 html.Label('User Emails'),
                 dcc.Dropdown(id='user-email-dropdown', multi=True),
-            ])
+            ], style={'display': 'block' if has_permission('options_emails') else 'none'})
         ]),
 
         dbc.Row(
