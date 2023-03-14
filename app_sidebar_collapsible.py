@@ -129,11 +129,14 @@ content = html.Div([
     ),
 
     # Pages Content
-    html.Div(dash.page_container, style={
-        "margin-left": "5rem",
-        "margin-right": "2rem",
-        "padding": "2rem 1rem",
-    }),
+    dcc.Loading(
+        type='default',
+        children=html.Div(dash.page_container, style={
+            "margin-left": "5rem",
+            "margin-right": "2rem",
+            "padding": "2rem 1rem",
+        })
+    ),
 ])
 
 
