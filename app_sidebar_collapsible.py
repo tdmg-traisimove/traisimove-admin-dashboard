@@ -15,9 +15,10 @@ from datetime import date
 import dash
 import dash_bootstrap_components as dbc
 import flask
-from dash import Input, Output, dcc, html
+from dash import Input, Output, dcc, html, Dash
+import dash_auth
 
-from config import CognitoConfig
+from config import CognitoConfig, VALID_USERNAME_PASSWORD_PAIRS
 from utils.cognito_utils import get_tokens, get_query_params
 from utils.db_utils import query_uuids, query_confirmed_trips
 from utils.permissions import has_permission
@@ -28,11 +29,16 @@ from utils import decode_jwt
 OPENPATH_LOGO = "https://www.nrel.gov/transportation/assets/images/openpath-logo.jpg"
 
 
-app = dash.Dash(
+app = Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
     suppress_callback_exceptions=True,
     use_pages=True,
 )
+if os.getenv('AUTH_TYPE') == 'basic':
+    auth = dash_auth.BasicAuth(
+        app,
+        VALID_USERNAME_PASSWORD_PAIRS
+    )
 
 
 sidebar = html.Div(
@@ -123,11 +129,14 @@ content = html.Div([
     ),
 
     # Pages Content
-    html.Div(dash.page_container, style={
-        "margin-left": "5rem",
-        "margin-right": "2rem",
-        "padding": "2rem 1rem",
-    }),
+    dcc.Loading(
+        type='default',
+        children=html.Div(dash.page_container, style={
+            "margin-left": "5rem",
+            "margin-right": "2rem",
+            "padding": "2rem 1rem",
+        })
+    ),
 ])
 
 
@@ -201,23 +210,31 @@ def update_store_trips(start_date, end_date):
     Input('url', 'search'),
 )
 def display_page(search):
-    # If the user is authenticated, display the home page
-    all_cookies = dict(flask.request.cookies)
-    if all_cookies.get('token') is not None:
-        user_data = decode_jwt.lambda_handler(all_cookies['token'])
-        if user_data:
-            return home_page
+    if os.getenv('AUTH_TYPE') == 'cognito':
+        # If the user is authenticated, display the home page
+        all_cookies = dict(flask.request.cookies)
+        if all_cookies.get('token') is not None:
+            user_data = decode_jwt.lambda_handler(all_cookies['token'])
+            if user_data:
+                return home_page
 
-    # If code is in query params, validate the user and display the home page
-    query_params = get_query_params(search)
-    if 'code' in query_params:
-        user_data = get_tokens(query_params['code'])
-        if user_data.get('id_token') is not None:
-            dash.callback_context.response.set_cookie('token', user_data['id_token'], max_age=60*60, httponly=True)
-            return home_page
+        # If code is in query params, validate the user and display the home page
+        query_params = get_query_params(search)
+        if 'code' in query_params:
+            user_data = get_tokens(query_params['code'])
+            if user_data.get('id_token') is not None:
+                dash.callback_context.response.set_cookie(
+                    'token',
+                    user_data['id_token'],
+                    max_age=60*60,
+                    httponly=True,
+                )
+                return home_page
 
-    # Otherwise display the login page
-    return login_page
+        # Otherwise display the login page
+        return login_page
+
+    return home_page
 
 
 if __name__ == "__main__":

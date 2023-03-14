@@ -11,7 +11,7 @@ import emission.core.get_database as edb
 
 from utils.generate_qr_codes import saveAsQRCode
 from utils.generate_random_tokens import generateRandomTokensForProgram
-from utils.permissions import has_permission
+from utils.permissions import get_token_prefix, has_permission
 
 
 if has_permission('token_generate'):
@@ -57,6 +57,18 @@ layout = html.Div(
                     dcc.Dropdown(options=['url safe', 'hex', 'base64'], value='url safe', id='token-format'),
 
                     html.Br(),
+                    dcc.Checklist(
+                        className='radio-items',
+                        id='token-checklist',
+                        options=[{'label': 'For Testing', 'value': 'test-token'}],
+                        value=[],
+                        style={
+                            'padding': '5px',
+                            'margin': 'auto'
+                        }
+                    ),
+
+                    html.Br(),
                     html.Div([
                         html.Button(children='Generate Tokens', id='token-generate', n_clicks=0, style={
                             'font-size': '14px', 'width': '140px', 'display': 'block', 'margin-bottom': '10px',
@@ -92,10 +104,12 @@ layout = html.Div(
     State('token-length', 'value'),
     State('token-count', 'value'),
     State('token-format', 'value'),
+    State('token-checklist', 'value'),
 )
-def generate_tokens(n_clicks, program, token_length, token_count, out_format):
+def generate_tokens(n_clicks, program, token_length, token_count, out_format, checklist):
     if n_clicks is not None and n_clicks > 0:
-        tokens = generateRandomTokensForProgram(program, token_length, token_count, out_format)
+        token_prefix = get_token_prefix() + program + ('_test' if 'test-token' in checklist else '')
+        tokens = generateRandomTokensForProgram(token_prefix, token_length, token_count, out_format)
         insert_many_tokens(tokens)
         for token in tokens:
             saveAsQRCode(QRCODE_PATH, token)
@@ -145,7 +159,8 @@ def populate_datatable():
             'textAlign': 'left',
         },
         markdown_options={"html": True},
-        style_table={'overflowX': 'auto'}
+        style_table={'overflowX': 'auto'},
+        export_format='csv',
     )
 
 def query_tokens():
