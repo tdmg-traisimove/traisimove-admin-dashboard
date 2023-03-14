@@ -157,7 +157,8 @@ def populate_datatable():
             'textAlign': 'left',
         },
         markdown_options={"html": True},
-        style_table={'overflowX': 'auto'}
+        style_table={'overflowX': 'auto'},
+        export_format='csv',
     )
 
 def query_tokens():
