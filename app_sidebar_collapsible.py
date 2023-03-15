@@ -131,6 +131,7 @@ content = html.Div([
     # Pages Content
     dcc.Loading(
         type='default',
+        fullscreen=True,
         children=html.Div(dash.page_container, style={
             "margin-left": "5rem",
             "margin-right": "2rem",
@@ -181,9 +182,10 @@ def update_store_uuids(start_date, end_date):
     start_date_obj = date.fromisoformat(start_date) if start_date else None
     end_date_obj = date.fromisoformat(end_date) if end_date else None
     dff = query_uuids(start_date_obj, end_date_obj)
+    records = dff.to_dict("records")
     store = {
-        "data": dff.to_dict("records"),
-        "columns": [{"name": i, "id": i} for i in dff.columns],
+        "data": records,
+        "length": len(records),
     }
     return store
 
@@ -197,9 +199,10 @@ def update_store_trips(start_date, end_date):
     start_date_obj = date.fromisoformat(start_date) if start_date else None
     end_date_obj = date.fromisoformat(end_date) if end_date else None
     df = query_confirmed_trips(start_date_obj, end_date_obj)
+    records = df.to_dict("records")
     store = {
-        "data": df.to_dict("records"),
-        "columns": [{"name": i, "id": i} for i in df.columns],
+        "data": records,
+        "length": len(records),
     }
     return store
 

@@ -9,14 +9,11 @@ from dash import dcc, html, Input, Output, callback, register_page, dash_table
 import pandas as pd
 from dash.exceptions import PreventUpdate
 
-from utils.constants import default_trip_columns
-from utils.permissions import has_permission, get_uuids_columns
+from utils.permissions import has_permission, get_uuids_columns, get_trips_columns
 
 register_page(__name__, path="/data")
 
-intro = """
-## Data
-"""
+intro = """## Data"""
 
 layout = html.Div(
     [   
@@ -38,24 +35,27 @@ layout = html.Div(
     Input('store-trips', 'data'),
 )
 def render_content(tab, store_uuids, store_trips):
+    data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
-        df = pd.DataFrame(store_uuids["data"])
-        if df.empty or not has_permission('data_uuids'):
-            return None
-        df = df.drop(columns=[col for col in df.columns if col not in get_uuids_columns()])
-        return populate_datatable(df)
+        data = store_uuids["data"]
+        columns = get_uuids_columns()
+        has_perm = has_permission('data_uuids')
     elif tab == 'tab-trips-datatable':
-        df = pd.DataFrame(store_trips["data"])
-        if df.empty or not has_permission('data_trips'):
-            return None
-        if 'data.start_loc.coordinates' in df.columns:
-            df['data.start_loc.coordinates'] = df['data.start_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
-        if 'data.end_loc.coordinates' in df.columns:
-            df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+        data = store_trips["data"]
+        columns = get_trips_columns()
+        has_perm = has_permission('data_trips')
+    df = pd.DataFrame(data)
+    if df.empty or not has_perm:
+        return None
 
-        df = df.drop(columns=[col for col in default_trip_columns if col in df.columns])
+    df = df.drop(columns=[col for col in df.columns if col not in columns])
 
-        return populate_datatable(df)
+    if 'data.start_loc.coordinates' in df.columns:
+        df['data.start_loc.coordinates'] = df['data.start_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+    if 'data.end_loc.coordinates' in df.columns:
+        df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+
+    return populate_datatable(df)
 
 
 def populate_datatable(df):

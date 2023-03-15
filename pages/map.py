@@ -21,30 +21,26 @@ intro = """## Map"""
 
 
 def create_lines_map(trips_group_by_user_id, user_id_list):
-    fig = go.Figure()
     start_lon, start_lat = 0, 0
+    traces = []
     for user_id in user_id_list:
         color = trips_group_by_user_id[user_id]['color']
         trips = trips_group_by_user_id[user_id]['trips']
-        start_coordinates = [trip['start_coordinates'] for trip in trips]
-        end_coordinates = [trip['end_coordinates'] for trip in trips]
-        n = len(start_coordinates)
 
-        for i in range(n):
+        for i, trip in enumerate(trips):
             if i == 0:
-                start_lon = start_coordinates[i][0]
-                start_lat = end_coordinates[i][1]
-
-            fig.add_trace(
+                start_lon = trip['start_coordinates'][0]
+                start_lat = trip['start_coordinates'][1]
+            traces.append(
                 go.Scattermapbox(
                     mode="markers+lines",
-                    lon=[start_coordinates[i][0], end_coordinates[i][0]],
-                    lat=[start_coordinates[i][1], end_coordinates[i][1]],
+                    lon=[trip['start_coordinates'][0], trip['end_coordinates'][0]],
+                    lat=[trip['start_coordinates'][1], trip['end_coordinates'][1]],
                     marker={'size': 10, 'color': color},
-                    legendrank=i + 1,
                 )
             )
 
+    fig = go.Figure(data=traces)
     fig.update_layout(
         showlegend=False,
         margin={'l': 0, 't': 30, 'b': 0, 'r': 0},
@@ -61,10 +57,12 @@ def create_lines_map(trips_group_by_user_id, user_id_list):
 def create_heatmap_fig(data):
     fig = go.Figure()
     if len(data['lat']) > 0:
-        fig.add_trace(go.Densitymapbox(
-            lon=data['lon'],
-            lat=data['lat'],
-        ))
+        fig.add_trace(
+            go.Densitymapbox(
+                lon=data['lon'],
+                lat=data['lat'],
+            )
+        )
         fig.update_layout(
             mapbox_style='open-street-map',
             mapbox_center_lon=data['lon'][0],
