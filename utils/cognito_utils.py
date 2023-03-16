@@ -1,6 +1,9 @@
 import base64
 
+import dash_bootstrap_components as dbc
+import flask
 import requests
+import dash
 
 from config import CognitoConfig
 from utils import decode_jwt
@@ -47,3 +50,43 @@ def get_query_params(url_params):
         for key ,val in [item.split('=') for item in url_params[1:].split('&')]:
             params[key] = val
     return params
+
+
+def get_cognito_login_page():
+    return [
+        dbc.Row([
+            dbc.Col([
+                dash.html.Label('Welcome to the dashboard', style={
+                    'font-size': '15px', 'display': 'block', 'verticalAlign': 'top', 'padding': '15px'
+                }),
+                dbc.Button('Login with AWS Cognito', id='login-button', href=CognitoConfig.AUTH_URL, style={
+                    'font-size': '14px', 'display': 'block', 'padding': '15px', 'verticalAlign': 'top',
+                    'background-color': 'green', 'color': 'white'
+                }),
+            ], style={'display': 'flex', 'justify_content': 'center', 'align-items': 'center',
+                      'flex-direction': 'column'}),
+        ])
+    ]
+
+
+def authenticate_user(params):
+    all_cookies = dict(flask.request.cookies)
+    if all_cookies.get('token') is not None:
+        user_data = decode_jwt.lambda_handler(all_cookies['token'])
+        if user_data:
+            return True
+
+    # If code is in query params, validate the user and set the token in cookies
+    query_params = get_query_params(params)
+    if 'code' in query_params:
+        user_data = get_tokens(query_params['code'])
+        if user_data.get('id_token') is not None:
+            dash.callback_context.response.set_cookie(
+                'token',
+                user_data['id_token'],
+                max_age=60*60,
+                httponly=True,
+            )
+            return True
+
+    return False
