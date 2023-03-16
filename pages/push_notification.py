@@ -6,7 +6,7 @@ The workaround is to check if the input value is None.
 """
 from uuid import UUID
 
-from dash import dcc, html, Input, Output, callback, register_page
+from dash import dcc, html, Input, Output, State, callback, register_page
 import pandas as pd
 
 import emission.storage.decorations.user_queries as esdu
@@ -157,19 +157,19 @@ def clear_push_message(n_clicks):
 @callback(
     Output('push-log', 'value'),
     Output('push-send-button', 'n_clicks'),
-    Input('push-log', 'value'),
     Input('push-send-button', 'n_clicks'),
-    Input('push-receiver-options', 'value'),
-    Input('push-user-emails', 'value'),
-    Input('push-user-uuids', 'value'),
-    Input('push-log-options', 'value'),
-    Input('push-title', 'value'),
-    Input('push-message', 'value'),
-    Input('push-survey-spec', 'value',)
+    State('push-log', 'value'),
+    State('push-receiver-options', 'value'),
+    State('push-user-emails', 'value'),
+    State('push-user-uuids', 'value'),
+    State('push-log-options', 'value'),
+    State('push-title', 'value'),
+    State('push-message', 'value'),
+    State('push-survey-spec', 'value',)
 )
-def send_push_notification(log, send_n_clicks, query_spec, emails, uuids, log_options, title, message, survey_spec):
+def send_push_notification( send_n_clicks, log, query_spec, emails, uuids, log_options, title, message, survey_spec):
     if send_n_clicks > 0:
-        logs = list()
+        logs = [f'Push Title: {title}', f'Push Message: {message}', f'Survey Spec: {survey_spec}']
         if query_spec == 'all':
             uuid_list = esdu.get_all_uuids()
         elif query_spec == 'email':
