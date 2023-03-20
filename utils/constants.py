@@ -1,12 +1,3 @@
-default_trip_columns = [
-    "trip_start_time_str",
-    "trip_end_time_str",
-    "timezone",
-    "start_coordinates",
-    "end_coordinates",
-    "travel_modes",
-]
-
 valid_trip_columns = [
     "data.source",
     "data.start_ts",
