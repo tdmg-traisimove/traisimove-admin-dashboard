@@ -162,11 +162,20 @@ valid_trip_columns = [
 
 # Authentication
 
+## Specify Authentication Type
+
+The AUTH_TYPE environment variable is used to specify the authentication type for the dashboard, and it is defined in
+the Docker Compose file. It has two possible values: "basic" and "cognito". The "basic" option refers to basic
+authentication, which is a simple way to authenticate users using a username and password. The "cognito" option refers
+to Amazon Cognito, which is a user authentication service that can be used with AWS services.
+
+## `config.py`
+
 The `config.py` file is a Python module that contains configuration settings for an application that uses
 authentication. To use this file, first make a copy of the provided `config-fake.py` file and rename it to `config.py`.
 Then, fill in the necessary variables with your own valid data.
 
-## CognitoConfig Class
+### CognitoConfig Class
 
 The `CognitoConfig` class contains variables used for authentication when using AWS Cognito. To use this authentication
 method, fill in the following variables with your credential data from your AWS Cognito panel in `config.py`:
@@ -187,11 +196,11 @@ pool is a collection of users who can authenticate with the app.
 - `AUTH_URL`: This is a string that represents the URL for initiating authentication requests with the user pool's
 authorization server.
 
-## VALID_USERNAME_PASSWORD_PAIRS
+### VALID_USERNAME_PASSWORD_PAIRS
 
 The `VALID_USERNAME_PASSWORD_PAIRS` dictionary contains all the valid usernames and passwords that users can authenticate with when using basic authentication. To use this authentication method, fill in the dictionary with your own valid usernames and passwords in `config.py`.
 
-## Usage
+### Usage
 
 To use the configuration settings defined in `config.py`, import the module at the beginning of your Python script, and access the variables using dot notation. For example:
 
