@@ -14,7 +14,8 @@ services:
       DB_HOST: db
       WEB_SERVER_HOST: 0.0.0.0
       SERVER_BRANCH: master
-      STUDY_CONFIG: "admin-dashboard-permissions"
+      CONFIG_PATH: "https://raw.githubusercontent.com/AlirezaRa94/nrel-openpath-deploy-configs/main/configs/"
+      STUDY_NAME: "admin-dashboard-permissions"
       AUTH_TYPE: "basic" # the other option is cognito
     networks:
        - emission

@@ -6,9 +6,9 @@ import requests
 from utils.constants import valid_trip_columns, valid_uuids_columns
 
 
-STUDY_CONFIG = os.getenv('STUDY_CONFIG')
-PATH = "https://raw.githubusercontent.com/AlirezaRa94/nrel-openpath-deploy-configs/main/configs/"
-CONFIG_URL = PATH + STUDY_CONFIG + ".nrel-op.json"
+STUDY_NAME = os.getenv('STUDY_NAME')
+PATH = os.getenv('CONFIG_PATH')
+CONFIG_URL = PATH + STUDY_NAME + ".nrel-op.json"
 response = requests.get(CONFIG_URL)
 permissions = json.loads(response.text).get("admin_dashboard", {})
 
