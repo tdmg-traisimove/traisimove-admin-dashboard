@@ -56,7 +56,7 @@ def create_lines_map(trips_group_by_user_id, user_id_list):
 
 def create_heatmap_fig(data):
     fig = go.Figure()
-    if len(data['lat']) > 0:
+    if len(data.get('lat', [])) > 0:
         fig.add_trace(
             go.Densitymapbox(
                 lon=data['lon'],
@@ -76,7 +76,7 @@ def create_heatmap_fig(data):
 
 def create_bubble_fig(data):
     fig = go.Figure()
-    if len(data['lon']) > 0:
+    if len(data.get('lon', [])) > 0:
         fig.add_trace(
             go.Scattermapbox(
                 lat=data['lat'],
@@ -223,11 +223,11 @@ def update_output(map_type, selected_user_ids, selected_user_emails, trips_data)
             user_ids.add(str(ecwu.User.fromEmail(user_email).uuid))
 
     if map_type == 'lines':
-        return create_lines_map(trips_data['users_data'], user_ids)
+        return create_lines_map(trips_data.get('users_data', {}), user_ids)
     elif map_type == 'heatmap':
-        return create_heatmap_fig(trips_data['coordinates'])
+        return create_heatmap_fig(trips_data.get('coordinates', {}))
     elif map_type == 'bubble':
-        return create_bubble_fig(trips_data['coordinates'])
+        return create_bubble_fig(trips_data.get('coordinates', {}))
     else:
         return go.Figure()
 
