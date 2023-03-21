@@ -70,6 +70,26 @@ To learn more about Dash, please visit [documentation](https://plot.ly/dash).
 
 # Dynamic Config
 
+## Set Variables
+
+### CONFIG_PATH
+
+The `CONFIG_PATH` environment variable is used to specify the location of the configuration files that are required for
+a Docker container to run properly. This means that the Docker container will attempt to download the configuration
+files from the specified URL. The current path to the raw format of nrel configs is:
+
+https://raw.githubusercontent.com/e-mission/nrel-openpath-deploy-configs/main/configs/
+
+
+### STUDY_NAME
+
+The `STUDY_NAME` environment variable is used to specify the name of the study or program that is being run inside the
+Docker container. This variable is typically used by the application running inside the container to differentiate
+between different studies or programs.
+
+Note that the `STUDY_NAME` variable can be set to any string value, and should be set to a unique value for each
+separate study or program.
+
 ## User Permissions
 
 The following document outlines the permissions that a user can have within the dashboard application. The permission
