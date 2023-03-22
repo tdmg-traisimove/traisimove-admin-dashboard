@@ -200,16 +200,18 @@ def update_store_trips(start_date, end_date):
     Input('url', 'search'),
 )
 def display_page(search):
-    try:
-        if auth_type == 'cognito':
+    if auth_type == 'cognito':
+        try:
             is_authenticated = authenticate_user(search)
             if is_authenticated:
                 return home_page
             return get_cognito_login_page()
+        except Exception as e:
+            print(e)
+            return get_cognito_login_page('Unsuccessful authentication, try again.', 'red')
 
-        return home_page
-    except Exception as e:
-        raise e
+    return home_page
+
 
 
 if __name__ == "__main__":

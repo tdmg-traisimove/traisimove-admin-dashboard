@@ -52,12 +52,12 @@ def get_query_params(url_params):
     return params
 
 
-def get_cognito_login_page():
+def get_cognito_login_page(text='Welcome to the dashboard', color='black'):
     return [
         dbc.Row([
             dbc.Col([
-                dash.html.Label('Welcome to the dashboard', style={
-                    'font-size': '15px', 'display': 'block', 'verticalAlign': 'top', 'padding': '15px'
+                dash.html.Label(text, style={
+                    'font-size': '15px', 'display': 'block', 'verticalAlign': 'top', 'padding': '15px', 'color': color
                 }),
                 dbc.Button('Login with AWS Cognito', id='login-button', href=CognitoConfig.AUTH_URL, style={
                     'font-size': '14px', 'display': 'block', 'padding': '15px', 'verticalAlign': 'top',
