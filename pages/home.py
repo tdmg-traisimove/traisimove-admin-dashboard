@@ -93,7 +93,7 @@ def get_number_of_active_users(uuid_list, threshold):
     for item in last_get_entries:
         last_get = item['write_ts']
         if last_get is not None:
-            last_call_diff = arrow.get().timestamp - last_get
+            last_call_diff = arrow.get().timestamp() - last_get
             if last_call_diff <= threshold:
                 number_of_active_users += 1
     return number_of_active_users
