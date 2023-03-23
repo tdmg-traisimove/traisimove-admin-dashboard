@@ -1,10 +1,5 @@
 __pycache__
-.DS_Store
 .idea/
-emission/
-conf/
-bin/
-requirements2.txt
 assets/qrcodes
 data/tokens.csv
 config.py
