@@ -203,12 +203,13 @@ def display_page(search):
     if auth_type == 'cognito':
         try:
             is_authenticated = authenticate_user(search)
-            if is_authenticated:
-                return home_page
-            return get_cognito_login_page()
         except Exception as e:
             print(e)
             return get_cognito_login_page('Unsuccessful authentication, try again.', 'red')
+
+        if is_authenticated:
+            return home_page
+        return get_cognito_login_page()
 
     return home_page
 

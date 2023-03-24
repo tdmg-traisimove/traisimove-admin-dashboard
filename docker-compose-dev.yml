@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: op-admin-dash-dev/opdash:0.0.1
+    image: e-mission/opdash:0.0.1
     ports:
       - "8050:8050"
     environment:
