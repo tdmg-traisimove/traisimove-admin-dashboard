@@ -14,6 +14,8 @@ RUN bash -c "./dashboard_setup/setup.sh"
 # copy over dashboard code
 WORKDIR /usr/src/app/pages
 COPY ./pages ./
+WORKDIR /usr/src/app/utils
+COPY ./utils ./
 WORKDIR /usr/src/app
 COPY app.py config.py app_sidebar_collapsible.py assets globals.py globalsUpdater.py Procfile ./
 
