@@ -33,3 +33,7 @@ def get_uuids_columns():
 
 def get_token_prefix():
     return permissions['token_prefix'] + '_' if permissions.get('token_prefix') else ''
+
+
+def get_additional_trip_columns():
+    return permissions.get('additional_trip_columns', [])

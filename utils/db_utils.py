@@ -4,7 +4,7 @@ import pandas as pd
 
 import emission.core.get_database as edb
 
-from utils.permissions import get_trips_columns
+from utils.permissions import get_trips_columns, get_additional_trip_columns
 
 
 def query_uuids(start_date, end_date):
@@ -36,7 +36,6 @@ def query_confirmed_trips(start_date, end_date):
         '$and': [
             {'metadata.key': 'analysis/confirmed_trip'},
             {'data.start_ts': {'$exists': True}},
-            {'data.user_input.trip_user_input': {'$exists': False}},
         ]
     }
     if start_date is not None:
@@ -55,11 +54,13 @@ def query_confirmed_trips(start_date, end_date):
         'timezone': '$data.start_local_dt.timezone',
         'start_coordinates': '$data.start_loc.coordinates',
         'end_coordinates': '$data.end_loc.coordinates',
-        'travel_modes': '$data.user_input.trip_user_input.data.jsonDocResponse.data.travel_mode',
     }
 
     for column in get_trips_columns():
         projection[column] = 1
+
+    for column in get_additional_trip_columns():
+        projection[column['label']] = column['path']
 
     query_result = edb.get_analysis_timeseries_db().find(query, projection)
     df = pd.json_normalize(list(query_result))
