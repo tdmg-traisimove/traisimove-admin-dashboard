@@ -6,9 +6,9 @@ import logging
 
 from utils import constants
 
-STUDY_NAME = os.getenv('STUDY_NAME')
+STUDY_CONFIG = os.getenv('STUDY_CONFIG')
 PATH = os.getenv('CONFIG_PATH')
-CONFIG_URL = PATH + STUDY_NAME + ".nrel-op.json"
+CONFIG_URL = PATH + STUDY_CONFIG + ".nrel-op.json"
 response = requests.get(CONFIG_URL)
 config = json.loads(response.text)
 surveyinfo = config.get("survey_info",

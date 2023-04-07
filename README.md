@@ -88,13 +88,13 @@ files from the specified URL. The current path to the raw format of nrel configs
 https://raw.githubusercontent.com/e-mission/nrel-openpath-deploy-configs/main/configs/
 
 
-### STUDY_NAME
+### STUDY_CONFIG
 
-The `STUDY_NAME` environment variable is used to specify the name of the study or program that is being run inside the
+The `STUDY_CONFIG` environment variable is used to specify the name of the study or program that is being run inside the
 Docker container. This variable is typically used by the application running inside the container to differentiate
 between different studies or programs.
 
-Note that the `STUDY_NAME` variable can be set to any string value, and should be set to a unique value for each
+Note that the `STUDY_CONFIG` variable can be set to any string value, and should be set to a unique value for each
 separate study or program.
 
 ## User Permissions
