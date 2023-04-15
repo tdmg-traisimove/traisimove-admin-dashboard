@@ -2,7 +2,7 @@ valid_trip_columns = [
     "data.source",
     "data.start_ts",
     "data.start_local_dt",
-    "data.start_fmt_tm",
+    "data.start_fmt_time",
     "data.start_place",
     "data.start_loc",
     "data.end_ts",
