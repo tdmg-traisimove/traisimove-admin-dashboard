@@ -68,6 +68,13 @@ To learn more about Dash, please visit [documentation](https://plot.ly/dash).
 
 `docker compose -f docker-compose-dash-app.yml up`
 
+## Test with a reverse proxy
+
+```
+docker-compose -f docker-compose-prod-nginx.yml build
+docker-compose -f docker-compose-prod-nginx.yml up -d
+```
+
 # Dynamic Config
 
 ## Set Variables
