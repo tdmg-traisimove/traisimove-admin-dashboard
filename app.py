@@ -46,7 +46,7 @@ server = app.server  # expose server variable for Procfile
 
 # For data that lives within the application.
 # Set the path to the data directory
-DATA_PATH = pathlib.Path(__file__).parent.joinpath("data/").resolve()
+DATA_PATH = pathlib.Path(__file__).parent.joinpath("./data/").resolve()
 
 #------------------------------------------------#
 # DASH LAYOUT ROOT
