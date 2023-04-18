@@ -43,19 +43,12 @@ def query_uuids(start_date, end_date):
     return df
 
 def query_confirmed_trips(start_date, end_date):
-    query = {
-        '$and': [
-            {'metadata.key': 'analysis/confirmed_trip'},
-            {'data.start_ts': {'$exists': True}},
-        ]
-    }
+    start_ts, end_ts = None, datetime.max.timestamp()
     if start_date is not None:
-        start_time = datetime.combine(start_date, datetime.min.time())
-        query['$and'][1]['data.start_ts']['$gte'] = start_time.timestamp()
+        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
 
     if end_date is not None:
-        end_time = datetime.combine(end_date, datetime.max.time())
-        query['$and'][1]['data.start_ts']['$lt'] = end_time.timestamp()
+        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
 
     projection = {
         '_id': 0,
@@ -76,9 +69,10 @@ def query_confirmed_trips(start_date, end_date):
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
     # we can then remove the start_time, end_time logic
-    # Alireza TODO: Replace with proper parsing for the start and end timestamp
-    entries = ts.find_entries(["analysis/confirmed_trip"],
-        time_query = estt.TimeQuery("data.start_ts", 0, sys.maxsize))
+    entries = ts.find_entries(
+        key_list=["analysis/confirmed_trip"],
+        time_query=estt.TimeQuery("data.start_ts", start_ts, end_ts),
+    )
     df = pd.json_normalize(list(entries))
     # Alireza TODO: Make this be configurable, to support only the projection needed
     # logging.warn("Before filtering, df columns are %s" % df.columns)
