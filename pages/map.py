@@ -10,8 +10,11 @@ from dash import dcc, html, Input, Output, State, callback, register_page
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
+import random
 
 import emission.core.wrapper.user as ecwu
+import emission.core.get_database as edb
+import logging
 
 from utils.permissions import has_permission
 
@@ -133,9 +136,14 @@ def create_user_emails_options(trips_group_by_user_id):
     options = list()
     user_emails = set()
     if has_permission('options_emails'):
-        for user_id in trips_group_by_user_id:
+        for i, user_id in enumerate(trips_group_by_user_id):
             color = trips_group_by_user_id[user_id]['color']
-            user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
+            logging.warn("dict is %s" % ecwu.User.fromUUID(UUID(user_id)).__dict__)
+            logging.warn("all users are %s" % list(edb.get_uuid_db().find()))
+            try:
+                user_email = ecwu.User.fromUUID(UUID(user_id))._User__email
+            except AttributeError as e:
+                continue
             user_emails.add(user_email)
             options.append(create_single_option(user_email, color))
     return options, user_emails
