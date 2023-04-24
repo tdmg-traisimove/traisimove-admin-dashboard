@@ -8,7 +8,7 @@ import emission.storage.timeseries.abstract_timeseries as esta
 import emission.storage.timeseries.timequery as estt
 
 from utils import constants
-from utils.permissions import get_all_trip_columns, get_all_named_trip_columns
+from utils import permissions as perm_utils
 
 
 def query_uuids(start_date, end_date):
@@ -61,14 +61,15 @@ def query_confirmed_trips(start_date, end_date):
 
     # logging.warn("Before filtering, df columns are %s" % df.columns)
     if not df.empty:
-        columns = [col for col in get_all_trip_columns() if col in df.columns]
+        columns = [col for col in perm_utils.get_all_trip_columns() if col in df.columns]
         df = df[columns]
         for col in constants.BINARY_TRIP_COLS:
             if col in df.columns:
                 df[col] = df[col].apply(str)
-        for named_col in get_all_named_trip_columns():
+        for named_col in perm_utils.get_all_named_trip_columns():
             if named_col['path'] in df.columns:
                 df[named_col['label']] = df[named_col['path']]
+                df = df.drop(columns=[named_col['path']])
 
     # logging.warn("After filtering, df columns are %s" % df.columns)
     return df

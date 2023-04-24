@@ -20,8 +20,14 @@ def get_allowed_named_trip_columns():
     return permissions.get('additional_trip_columns', [])
 
 
+def get_required_columns():
+    required_cols = {'user_id'}
+    required_cols.update(col['path'] for col in constants.REQUIRED_NAMED_COLS)
+    return required_cols
+
+
 def get_all_named_trip_columns():
-    named_columns = constants.REQUIRED_NAMED_COLS
+    named_columns = [item for item in constants.REQUIRED_NAMED_COLS]
     named_columns.extend(
         get_allowed_named_trip_columns()
     )
@@ -33,9 +39,7 @@ def get_all_trip_columns():
     columns.update(
         col['path'] for col in get_allowed_named_trip_columns()
     )
-    columns.update(
-        col['path'] for col in constants.REQUIRED_NAMED_COLS
-    )
+    columns.update(get_required_columns())
     return columns
 
 

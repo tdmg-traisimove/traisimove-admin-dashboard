@@ -1,5 +1,4 @@
 REQUIRED_NAMED_COLS = [
-    {'label': 'user_id', 'path': 'user_id'},
     {'label': 'trip_start_time_str', 'path': 'data.start_fmt_time'},
     {'label': 'trip_end_time_str', 'path': 'data.end_fmt_time'},
     {'label': 'start_coordinates', 'path': 'data.start_loc.coordinates'},
