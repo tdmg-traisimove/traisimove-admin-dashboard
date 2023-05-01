@@ -1,14 +1,14 @@
+import logging
 from datetime import datetime, timezone
-import sys
 
 import pandas as pd
-import logging
 
 import emission.core.get_database as edb
 import emission.storage.timeseries.abstract_timeseries as esta
 import emission.storage.timeseries.timequery as estt
 
-from utils.permissions import get_trips_columns, get_additional_trip_columns
+from utils import constants
+from utils import permissions as perm_utils
 
 
 def query_uuids(start_date, end_date):
@@ -43,55 +43,33 @@ def query_uuids(start_date, end_date):
     return df
 
 def query_confirmed_trips(start_date, end_date):
-    query = {
-        '$and': [
-            {'metadata.key': 'analysis/confirmed_trip'},
-            {'data.start_ts': {'$exists': True}},
-        ]
-    }
+    start_ts, end_ts = None, datetime.max.timestamp()
     if start_date is not None:
-        start_time = datetime.combine(start_date, datetime.min.time())
-        query['$and'][1]['data.start_ts']['$gte'] = start_time.timestamp()
+        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
 
     if end_date is not None:
-        end_time = datetime.combine(end_date, datetime.max.time())
-        query['$and'][1]['data.start_ts']['$lt'] = end_time.timestamp()
-
-    projection = {
-        '_id': 0,
-        'user_id': 1,
-        'trip_start_time_str': '$data.start_fmt_time',
-        'trip_end_time_str': '$data.end_fmt_time',
-        'timezone': '$data.start_local_dt.timezone',
-        'start_coordinates': '$data.start_loc.coordinates',
-        'end_coordinates': '$data.end_loc.coordinates',
-    }
-
-    for column in get_trips_columns():
-        projection[column] = 1
-
-    for column in get_additional_trip_columns():
-        projection[column['label']] = column['path']
+        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
 
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
     # we can then remove the start_time, end_time logic
-    # Alireza TODO: Replace with proper parsing for the start and end timestamp
-    entries = ts.find_entries(["analysis/confirmed_trip"],
-        time_query = estt.TimeQuery("data.start_ts", 0, sys.maxsize))
+    entries = ts.find_entries(
+        key_list=["analysis/confirmed_trip"],
+        time_query=estt.TimeQuery("data.start_ts", start_ts, end_ts),
+    )
     df = pd.json_normalize(list(entries))
-    # Alireza TODO: Make this be configurable, to support only the projection needed
+
     # logging.warn("Before filtering, df columns are %s" % df.columns)
-    df = df[["user_id", "data.start_fmt_time", "data.end_fmt_time", "data.distance", "data.duration", "data.start_loc.coordinates", "data.end_loc.coordinates"]]
-    # logging.warn("After filtering, df columns are %s" % df.columns)
     if not df.empty:
-        df['user_id'] = df['user_id'].apply(str)
-        df['trip_start_time_str'] = df['data.start_fmt_time']
-        df['trip_end_time_str'] = df['data.end_fmt_time']
-        df['start_coordinates'] = df['data.start_loc.coordinates']
-        df['end_coordinates'] = df['data.end_loc.coordinates']
-        if 'data.start_place' in df.columns:
-            df['data.start_place'] = df['data.start_place'].apply(str)
-        if 'data.end_place' in df.columns:
-            df['data.end_place'] = df['data.end_place'].apply(str)
+        columns = [col for col in perm_utils.get_all_trip_columns() if col in df.columns]
+        df = df[columns]
+        for col in constants.BINARY_TRIP_COLS:
+            if col in df.columns:
+                df[col] = df[col].apply(str)
+        for named_col in perm_utils.get_all_named_trip_columns():
+            if named_col['path'] in df.columns:
+                df[named_col['label']] = df[named_col['path']]
+                df = df.drop(columns=[named_col['path']])
+
+    # logging.warn("After filtering, df columns are %s" % df.columns)
     return df
