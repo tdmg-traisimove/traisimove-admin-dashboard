@@ -10,7 +10,24 @@ STUDY_NAME = os.getenv('STUDY_NAME')
 PATH = os.getenv('CONFIG_PATH')
 CONFIG_URL = PATH + STUDY_NAME + ".nrel-op.json"
 response = requests.get(CONFIG_URL)
-permissions = json.loads(response.text).get("admin_dashboard", {})
+config = json.loads(response.text)
+surveyinfo = config.get("survey_info",
+    {
+      "surveys": {
+        "UserProfileSurvey": {
+          "formPath": "json/demo-survey-v2.json",
+          "version": 1,
+          "compatibleWith": 1,
+          "dataKey": "manual/demographic_survey",
+          "labelTemplate": {
+            "en": "Answered",
+            "es": "Contestada"
+          }
+        }
+      },
+      "trip-labels": "MULTILABEL"
+    })
+permissions = config.get("admin_dashboard", {})
 
 
 def has_permission(perm):
@@ -18,8 +35,16 @@ def has_permission(perm):
 
 
 def get_allowed_named_trip_columns():
-    return permissions.get('additional_trip_columns', [])
-
+    if surveyinfo["trip-labels"] == "MULTILABEL":
+        return constants.MULTILABEL_NAMED_COLS
+    elif surveyinfo["trip-labels"] == "ENKETO":
+        # TODO: Figure out how to specify these
+        # can we re-use the existing labels in survey_info
+        # if not, we should add the label paths to survey info
+        # since the paths are survey info and not permissions
+        # we should also make sure that there are sufficient examples
+        # of this
+        return permissions.get('additional_trip_columns', [])
 
 def get_required_columns():
     required_cols = {'user_id'}

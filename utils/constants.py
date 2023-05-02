@@ -5,6 +5,12 @@ REQUIRED_NAMED_COLS = [
     {'label': 'end_coordinates', 'path': 'data.end_loc.coordinates'},
 ]
 
+MULTILABEL_NAMED_COLS = [
+    {'label': 'mode_confirm', 'path': 'data.user_input.mode_confirm'},
+    {'label': 'purpose_confirm', 'path': 'data.user_input.purpose_confirm'},
+    {'label': 'replaced_mode', 'path': 'data.user_input.replaced_mode'},
+]
+
 VALID_TRIP_COLS = [
     "data.start_local_dt",
     "data.start_fmt_time",
