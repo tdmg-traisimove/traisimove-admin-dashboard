@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+import arrow
 
 import pandas as pd
 
@@ -71,6 +72,23 @@ def query_confirmed_trips(start_date, end_date):
             if named_col['path'] in df.columns:
                 df[named_col['label']] = df[named_col['path']]
                 # df = df.drop(columns=[named_col['path']])
+        # TODO: We should really display both the humanized value and the raw value
+        # humanized value for people to see the entries in real time
+        # raw value to support analyses on the downloaded data
+        # I still don't fully grok which columns are displayed
+        # https://github.com/e-mission/op-admin-dashboard/issues/29#issuecomment-1530105040
+        # https://github.com/e-mission/op-admin-dashboard/issues/29#issuecomment-1530439811
+        # so just replacing the distance and duration with the humanized values for now
+        use_imperial = perm_utils.config.get("display_config",
+            {"use_imperial": False}).get("use_imperial", False)
+        # convert to km to humanize
+        df['data.distance'] = df['data.distance'] / 1000
+        # convert km further to miles because this is the US, Liberia or Myanmar
+        # https://en.wikipedia.org/wiki/Mile
+        if use_imperial:
+            df['data.distance'] = df['data.distance'] * 0.6213712
+
+        df['data.duration'] = df['data.duration'].apply(lambda d: arrow.utcnow().shift(seconds=d).humanize(only_distance=True))
 
     # logging.debug("After filtering, df columns are %s" % df.columns)
     # logging.debug("After filtering, the actual data is %s" % df.head())
