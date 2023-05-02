@@ -69,7 +69,7 @@ def query_confirmed_trips(start_date, end_date):
         for named_col in perm_utils.get_all_named_trip_columns():
             if named_col['path'] in df.columns:
                 df[named_col['label']] = df[named_col['path']]
-                df = df.drop(columns=[named_col['path']])
+                # df = df.drop(columns=[named_col['path']])
 
     # logging.warn("After filtering, df columns are %s" % df.columns)
     return df
