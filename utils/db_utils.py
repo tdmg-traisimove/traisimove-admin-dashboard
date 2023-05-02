@@ -59,10 +59,11 @@ def query_confirmed_trips(start_date, end_date):
     )
     df = pd.json_normalize(list(entries))
 
-    # logging.warn("Before filtering, df columns are %s" % df.columns)
+    # logging.debug("Before filtering, df columns are %s" % df.columns)
     if not df.empty:
         columns = [col for col in perm_utils.get_all_trip_columns() if col in df.columns]
         df = df[columns]
+        # logging.debug("After getting all columns, they are %s" % df.columns)
         for col in constants.BINARY_TRIP_COLS:
             if col in df.columns:
                 df[col] = df[col].apply(str)
@@ -71,5 +72,7 @@ def query_confirmed_trips(start_date, end_date):
                 df[named_col['label']] = df[named_col['path']]
                 # df = df.drop(columns=[named_col['path']])
 
-    # logging.warn("After filtering, df columns are %s" % df.columns)
+    # logging.debug("After filtering, df columns are %s" % df.columns)
+    # logging.debug("After filtering, the actual data is %s" % df.head())
+    # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
     return df

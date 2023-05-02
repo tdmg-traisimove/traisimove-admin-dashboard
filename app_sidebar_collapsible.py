@@ -193,6 +193,7 @@ def update_store_trips(start_date, end_date):
     end_date_obj = date.fromisoformat(end_date) if end_date else None
     df = query_confirmed_trips(start_date_obj, end_date_obj)
     records = df.to_dict("records")
+    # logging.debug("returning records %s" % records[0:2])
     store = {
         "data": records,
         "length": len(records),

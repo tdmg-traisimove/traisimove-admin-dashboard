@@ -2,6 +2,7 @@ import json
 import os
 
 import requests
+import logging
 
 from utils import constants
 
@@ -35,11 +36,16 @@ def get_all_named_trip_columns():
 
 def get_all_trip_columns():
     columns = set()
+    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
     columns.update(get_allowed_trip_columns())
+    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
     columns.update(
         col['path'] for col in get_allowed_named_trip_columns()
     )
+    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
+
     columns.update(get_required_columns())
+    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
     return columns
 
 
