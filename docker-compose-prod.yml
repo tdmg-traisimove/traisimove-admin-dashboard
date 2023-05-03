@@ -31,8 +31,13 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+    volumes:
+      - mongo-data:/data/db
     networks:
        - emission
 
 networks:
   emission:
+
+volumes:
+  mongo-data:
