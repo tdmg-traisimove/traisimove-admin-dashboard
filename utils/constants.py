@@ -5,26 +5,21 @@ REQUIRED_NAMED_COLS = [
     {'label': 'end_coordinates', 'path': 'data.end_loc.coordinates'},
 ]
 
+MULTILABEL_NAMED_COLS = [
+    {'label': 'mode_confirm', 'path': 'data.user_input.mode_confirm'},
+    {'label': 'purpose_confirm', 'path': 'data.user_input.purpose_confirm'},
+    {'label': 'replaced_mode', 'path': 'data.user_input.replaced_mode'},
+]
+
 VALID_TRIP_COLS = [
-    "data.source",
-    "data.start_ts",
     "data.start_local_dt",
     "data.start_fmt_time",
-    "data.start_place",
-    "data.end_ts",
     "data.end_local_dt",
     "data.end_fmt_time",
-    "data.end_place",
     "data.duration",
     "data.distance",
     "data.start_loc.coordinates",
     "data.end_loc.coordinates",
-    "metadata.key",
-    "metadata.platform",
-    "metadata.write_ts",
-    "metadata.time_zone",
-    "metadata.write_local_dt",
-    "metadata.write_fmt_time",
     "user_id"
 ]
 

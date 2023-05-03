@@ -16,6 +16,12 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html, Dash
 import dash_auth
+import logging
+# Set the logging right at the top to make sure that debug
+# logs are displayed in dev mode
+# until https://github.com/plotly/dash/issues/532 is fixed
+if os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true':
+    logging.basicConfig(level=logging.DEBUG)
 
 from utils.db_utils import query_uuids, query_confirmed_trips
 from utils.permissions import has_permission
@@ -36,6 +42,8 @@ app = Dash(
     suppress_callback_exceptions=True,
     use_pages=True,
 )
+server = app.server  # expose server variable for Procfile
+
 if auth_type == 'basic':
     auth = dash_auth.BasicAuth(
         app,
@@ -187,6 +195,7 @@ def update_store_trips(start_date, end_date):
     end_date_obj = date.fromisoformat(end_date) if end_date else None
     df = query_confirmed_trips(start_date_obj, end_date_obj)
     records = df.to_dict("records")
+    # logging.debug("returning records %s" % records[0:2])
     store = {
         "data": records,
         "length": len(records),
@@ -218,4 +227,12 @@ def display_page(search):
 if __name__ == "__main__":
     envPort = int(os.getenv('DASH_SERVER_PORT', '8050'))
     envDebug = os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true'
+    app.logger.setLevel(logging.DEBUG)
+    logging.debug("before override, current server config = %s" % server.config)
+    server.config.update(
+        TESTING=envDebug,
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True
+    )
+    logging.debug("after override, current server config = %s" % server.config)
     app.run_server(debug=envDebug, host='0.0.0.0', port=envPort)
