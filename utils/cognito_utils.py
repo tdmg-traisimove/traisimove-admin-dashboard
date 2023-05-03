@@ -86,6 +86,7 @@ def authenticate_user(params):
                 user_data['id_token'],
                 max_age=60*60,
                 httponly=True,
+                secure=True,
             )
             return True
 

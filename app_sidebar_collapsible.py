@@ -42,6 +42,8 @@ app = Dash(
     suppress_callback_exceptions=True,
     use_pages=True,
 )
+server = app.server  # expose server variable for Procfile
+
 if auth_type == 'basic':
     auth = dash_auth.BasicAuth(
         app,
@@ -226,4 +228,11 @@ if __name__ == "__main__":
     envPort = int(os.getenv('DASH_SERVER_PORT', '8050'))
     envDebug = os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true'
     app.logger.setLevel(logging.DEBUG)
+    logging.debug("before override, current server config = %s" % server.config)
+    server.config.update(
+        TESTING=envDebug,
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True
+    )
+    logging.debug("after override, current server config = %s" % server.config)
     app.run_server(debug=envDebug, host='0.0.0.0', port=envPort)
