@@ -25,6 +25,7 @@ if os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true':
 
 from utils.db_utils import query_uuids, query_confirmed_trips
 from utils.permissions import has_permission
+import flask_talisman as flt
 
 
 
@@ -222,7 +223,20 @@ def display_page(search):
 
     return home_page
 
+extra_csp_url = [
+    "https://raw.githubusercontent.com",
+    "https://*.tile.openstreetmap.org",
+    "https://cdn.jsdelivr.net",
+    "https://use.fontawesome.com",
+    "https://www.nrel.gov",
+    "data:",
+    "blob:"
+]
+csp = {
+       'default-src': ["'self'", "'unsafe-inline'"] + extra_csp_url
+      }
 
+flt.Talisman(server, content_security_policy=csp)
 
 if __name__ == "__main__":
     envPort = int(os.getenv('DASH_SERVER_PORT', '8050'))
