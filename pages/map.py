@@ -47,7 +47,7 @@ def create_lines_map(trips_group_by_user_id, user_id_list):
     fig.update_layout(
         showlegend=False,
         margin={'l': 0, 't': 30, 'b': 0, 'r': 0},
-        mapbox_style="stamen-terrain",
+        mapbox_style="open-street-map",
         mapbox_center_lon=start_lon,
         mapbox_center_lat=start_lat,
         mapbox_zoom=11,
@@ -93,7 +93,7 @@ def create_bubble_fig(data):
         )
         fig.update_layout(
             autosize=True,
-            mapbox_style='carto-positron',
+            mapbox_style='open-street-map',
             mapbox_center_lon=data['lon'][0],
             mapbox_center_lat=data['lat'][0],
             mapbox_zoom=11,
