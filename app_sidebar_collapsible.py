@@ -236,7 +236,7 @@ csp = {
        'default-src': ["'self'", "'unsafe-inline'"] + extra_csp_url
       }
 
-flt.Talisman(server, content_security_policy=csp, strict_transport_security_preload=True)
+flt.Talisman(server, content_security_policy=csp, strict_transport_security=False)
 
 if __name__ == "__main__":
     envPort = int(os.getenv('DASH_SERVER_PORT', '8050'))
