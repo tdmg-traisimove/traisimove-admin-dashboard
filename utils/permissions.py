@@ -31,7 +31,7 @@ permissions = config.get("admin_dashboard", {})
 
 
 def has_permission(perm):
-    return True if permissions.get(perm) is True else False
+    return False if permissions.get(perm) is False else True
 
 
 def get_allowed_named_trip_columns():
