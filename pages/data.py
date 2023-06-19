@@ -6,10 +6,12 @@ The workaround is to check if the input value is None.
 from dash import dcc, html, Input, Output, callback, register_page, dash_table
 
 # Etc
+import logging
 import pandas as pd
 from dash.exceptions import PreventUpdate
 
 from utils import permissions as perm_utils
+from utils import db_utils
 
 register_page(__name__, path="/data")
 
@@ -28,6 +30,14 @@ layout = html.Div(
 )
 
 
+def clean_location_data(df):
+    if 'data.start_loc.coordinates' in df.columns:
+        df['data.start_loc.coordinates'] = df['data.start_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+    if 'data.end_loc.coordinates' in df.columns:
+        df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+    return df
+
+
 @callback(
     Output('tabs-content', 'children'),
     Input('tabs-datatable', 'value'),
@@ -38,6 +48,9 @@ def render_content(tab, store_uuids, store_trips):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
+        logging.debug("Before adding trip data, users data is %s" % data)
+        data = db_utils.add_user_stats(data, store_trips["data"])
+        logging.debug("After adding trip data, users data is %s" % data)
         columns = perm_utils.get_uuids_columns()
         has_perm = perm_utils.has_permission('data_uuids')
     elif tab == 'tab-trips-datatable':
@@ -52,11 +65,7 @@ def render_content(tab, store_uuids, store_trips):
         return None
 
     df = df.drop(columns=[col for col in df.columns if col not in columns])
-
-    if 'data.start_loc.coordinates' in df.columns:
-        df['data.start_loc.coordinates'] = df['data.start_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
-    if 'data.end_loc.coordinates' in df.columns:
-        df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
+    df = clean_location_data(df)
 
     return populate_datatable(df)
 

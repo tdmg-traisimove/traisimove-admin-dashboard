@@ -94,3 +94,18 @@ def query_confirmed_trips(start_date, end_date):
     # logging.debug("After filtering, the actual data is %s" % df.head())
     # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
     return df
+
+
+def add_user_stats(user_data, trip_data):
+    trip_df = pd.DataFrame(trip_data)
+    trip_grouped = trip_df.groupby('user_id')
+    for user in user_data:
+        user_id = user['user_id']
+        if user_id in trip_grouped.groups:
+            trips = trip_grouped.get_group(user_id)
+            user['confirmed_trips'] = len(trips)
+            user['first_trip'] = trips['trip_start_time_str'].min()
+            user['last_trip'] = trips['trip_start_time_str'].max()
+            # logging.debug(f"{trip_grouped.get_group(user_id).columns}")
+            # number_of_answered = len(df[df['user_input'] != {}].index) if 'user_input' in df.columns else 0
+    return user_data

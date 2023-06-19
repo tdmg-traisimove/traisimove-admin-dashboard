@@ -33,4 +33,7 @@ valid_uuids_columns = [
     'user_token',
     'user_id',
     'update_ts',
+    'confirmed_trips',
+    'first_trip',
+    'last_trip',
 ]
