@@ -48,9 +48,7 @@ def render_content(tab, store_uuids, store_trips):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
-        logging.debug("Before adding trip data, users data is %s" % data)
-        data = db_utils.add_user_stats(data, store_trips["data"])
-        logging.debug("After adding trip data, users data is %s" % data)
+        data = db_utils.add_user_stats(data)
         columns = perm_utils.get_uuids_columns()
         has_perm = perm_utils.has_permission('data_uuids')
     elif tab == 'tab-trips-datatable':
