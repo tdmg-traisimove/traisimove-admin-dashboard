@@ -122,21 +122,30 @@ def add_user_stats(user_data):
         user['labeled_trips'] = labeled_trips
 
         if total_trips > 0:
+            time_format = 'YYYY-MM-DD HH:mm:ss'
             ts = esta.TimeSeries.get_time_series(UUID(user_id))
             start_ts = ts.get_first_value_for_field(
                 key='analysis/confirmed_trip',
-                field='data.start_fmt_time',
+                field='data.end_ts',
                 sort_order=pymongo.ASCENDING
             )
             if start_ts != -1:
-                user['first_trip'] = start_ts
+                user['first_trip'] = arrow.get(start_ts).format(time_format)
 
             end_ts = ts.get_first_value_for_field(
                 key='analysis/confirmed_trip',
-                field='data.start_fmt_time',
+                field='data.end_ts',
                 sort_order=pymongo.DESCENDING
             )
             if end_ts != -1:
-                user['last_trip'] = end_ts
+                user['last_trip'] = arrow.get(end_ts).format(time_format)
+
+            last_call = ts.get_first_value_for_field(
+                key='stats/server_api_time',
+                field='data.ts',
+                sort_order=pymongo.DESCENDING
+            )
+            if last_call != -1:
+                user['last_call'] = arrow.get(last_call).format(time_format)
 
     return user_data

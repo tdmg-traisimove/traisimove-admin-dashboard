@@ -37,4 +37,5 @@ valid_uuids_columns = [
     'labeled_trips',
     'first_trip',
     'last_trip',
+    'last_call',
 ]
