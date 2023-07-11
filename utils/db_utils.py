@@ -1,8 +1,11 @@
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
+
 import arrow
 
 import pandas as pd
+import pymongo
 
 import emission.core.get_database as edb
 import emission.storage.timeseries.abstract_timeseries as esta
@@ -94,3 +97,65 @@ def query_confirmed_trips(start_date, end_date):
     # logging.debug("After filtering, the actual data is %s" % df.head())
     # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
     return df
+
+
+def add_user_stats(user_data):
+    for user in user_data:
+        user_uuid = UUID(user['user_id'])
+
+        # TODO: Use the time-series functions when the needed functionality is added.
+        total_trips = edb.get_analysis_timeseries_db().count_documents(
+            {
+                'user_id': user_uuid,
+                'metadata.key': 'analysis/confirmed_trip',
+            }
+        )
+        user['total_trips'] = total_trips
+
+        labeled_trips = edb.get_analysis_timeseries_db().count_documents(
+            {
+                'user_id': user_uuid,
+                'metadata.key': 'analysis/confirmed_trip',
+                'data.user_input': {'$ne': {}},
+            }
+        )
+        user['labeled_trips'] = labeled_trips
+
+        profile_data = edb.get_profile_db().find_one({'user_id': user_uuid})
+        user['platform'] = profile_data.get('curr_platform')
+        user['manufacturer'] = profile_data.get('manufacturer')
+        user['app_version'] = profile_data.get('client_app_version')
+        user['os_version'] = profile_data.get('client_os_version')
+        user['phone_lang'] = profile_data.get('phone_lang')
+
+
+
+
+        if total_trips > 0:
+            time_format = 'YYYY-MM-DD HH:mm:ss'
+            ts = esta.TimeSeries.get_time_series(user_uuid)
+            start_ts = ts.get_first_value_for_field(
+                key='analysis/confirmed_trip',
+                field='data.end_ts',
+                sort_order=pymongo.ASCENDING
+            )
+            if start_ts != -1:
+                user['first_trip'] = arrow.get(start_ts).format(time_format)
+
+            end_ts = ts.get_first_value_for_field(
+                key='analysis/confirmed_trip',
+                field='data.end_ts',
+                sort_order=pymongo.DESCENDING
+            )
+            if end_ts != -1:
+                user['last_trip'] = arrow.get(end_ts).format(time_format)
+
+            last_call = ts.get_first_value_for_field(
+                key='stats/server_api_time',
+                field='data.ts',
+                sort_order=pymongo.DESCENDING
+            )
+            if last_call != -1:
+                user['last_call'] = arrow.get(last_call).format(time_format)
+
+    return user_data
