@@ -101,12 +101,12 @@ def query_confirmed_trips(start_date, end_date):
 
 def add_user_stats(user_data):
     for user in user_data:
-        user_id = user['user_id']
+        user_uuid = UUID(user['user_id'])
 
         # TODO: Use the time-series functions when the needed functionality is added.
         total_trips = edb.get_analysis_timeseries_db().count_documents(
             {
-                'user_id': UUID(user_id),
+                'user_id': user_uuid,
                 'metadata.key': 'analysis/confirmed_trip',
             }
         )
@@ -114,16 +114,26 @@ def add_user_stats(user_data):
 
         labeled_trips = edb.get_analysis_timeseries_db().count_documents(
             {
-                'user_id': UUID(user_id),
+                'user_id': user_uuid,
                 'metadata.key': 'analysis/confirmed_trip',
                 'data.user_input': {'$ne': {}},
             }
         )
         user['labeled_trips'] = labeled_trips
 
+        profile_data = edb.get_profile_db().find_one({'user_id': user_uuid})
+        user['platform'] = profile_data['curr_platform']
+        user['manufacturer'] = profile_data['manufacturer']
+        user['app_version'] = profile_data['client_app_version']
+        user['os_version'] = profile_data['client_os_version']
+        user['phone_lang'] = profile_data['phone_lang']
+
+
+
+
         if total_trips > 0:
             time_format = 'YYYY-MM-DD HH:mm:ss'
-            ts = esta.TimeSeries.get_time_series(UUID(user_id))
+            ts = esta.TimeSeries.get_time_series(user_uuid)
             start_ts = ts.get_first_value_for_field(
                 key='analysis/confirmed_trip',
                 field='data.end_ts',

@@ -38,4 +38,9 @@ valid_uuids_columns = [
     'first_trip',
     'last_trip',
     'last_call',
+    'platform',
+    'manufacturer',
+    'app_version',
+    'os_version',
+    'phone_lang',
 ]
