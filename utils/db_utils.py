@@ -122,11 +122,11 @@ def add_user_stats(user_data):
         user['labeled_trips'] = labeled_trips
 
         profile_data = edb.get_profile_db().find_one({'user_id': user_uuid})
-        user['platform'] = profile_data['curr_platform']
-        user['manufacturer'] = profile_data['manufacturer']
-        user['app_version'] = profile_data['client_app_version']
-        user['os_version'] = profile_data['client_os_version']
-        user['phone_lang'] = profile_data['phone_lang']
+        user['platform'] = profile_data.get('curr_platform')
+        user['manufacturer'] = profile_data.get('manufacturer')
+        user['app_version'] = profile_data.get('client_app_version')
+        user['os_version'] = profile_data.get('client_os_version')
+        user['phone_lang'] = profile_data.get('phone_lang')
 
 
 
