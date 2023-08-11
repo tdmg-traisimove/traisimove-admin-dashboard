@@ -47,7 +47,7 @@ def query_uuids(start_date, end_date):
     return df
 
 def query_confirmed_trips(start_date, end_date):
-    start_ts, end_ts = None, datetime.max.timestamp()
+    start_ts, end_ts = None, datetime.max.replace(tzinfo=timezone.utc).timestamp()
     if start_date is not None:
         start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
 
