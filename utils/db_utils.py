@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import arrow
+from bson.son import SON
 
 import pandas as pd
 import pymongo
@@ -159,3 +160,86 @@ def add_user_stats(user_data):
                 user['last_call'] = arrow.get(last_call).format(time_format)
 
     return user_data
+
+def query_segments_crossing_endpoints(start_lat, start_long, end_lat, end_long, range_around_endpoints=400):
+    # data.loc only appears in analysis/recreated_location
+    query_start = {'data.loc': {'$near': SON([('$geometry', SON([('type', 'Point'), ('coordinates', [start_long, start_lat])])), ('$maxDistance', range_around_endpoints)])}}
+    query_end = {'data.loc': {'$near': SON([('$geometry', SON([('type', 'Point'), ('coordinates', [end_long, end_lat])])), ('$maxDistance', range_around_endpoints)])}}
+    
+    res_end = edb.get_analysis_timeseries_db().find(query_end)
+    end_by_section = {}
+    for elt in res_end:
+        elt_data = elt.get('data')
+        if elt_data:
+            section_id = elt_data.get('section')
+            # This makes sure that only the first encounter of the section is added
+            # The near query gives closest points first, so the first one is the one we want
+            if section_id not in end_by_section:
+                end_by_section[section_id] = elt
+    
+    res_start = edb.get_analysis_timeseries_db().find(query_start)
+    start_by_section = {}
+    for elt in res_start:
+        elt_data = elt.get('data')
+        if elt_data:
+            section_id = elt_data.get('section')
+            if section_id not in start_by_section:
+                start_by_section[section_id] = elt
+    
+    vals = []
+    user_id_seen_dict = {}
+    number_user_seen = 0
+    # Now we can read every section crossing start point
+    for section_id in start_by_section:
+        matching_start = start_by_section[section_id]
+        matching_start_data = matching_start.get('data')
+        if matching_start_data is None:
+            # Something is wrong with the fetched data, shouldn't happen
+            continue
+        if 'idx' not in matching_start_data:
+            # Sometimes, idx is missing in data, not sure why
+            continue
+        matching_end = end_by_section.get(section_id)
+        if matching_end is None:
+            # This section_id didn't cross the end point
+            continue
+        matching_end_data = matching_end.get('data', {})
+        # idx allows us to check that the start section is crossed first, we do not care about trips going the other way
+        if 'idx' in matching_end_data and matching_start_data.get('idx') < matching_end_data.get('idx'):
+            user_id = str(start_by_section[section_id].get('user_id'))
+            if user_id_seen_dict.get(user_id) is None:
+                number_user_seen += 1
+                user_id_seen_dict[user_id] = True
+            vals.append({
+                'start': start_by_section[section_id], 
+                'end': end_by_section[section_id], 
+                'duration': matching_end_data.get('ts') - matching_start_data.get('ts'),
+                'section': section_id, 
+                'mode': matching_start_data.get('mode'), # Note: this is the mode given by the phone, not the computed one, we'll read it later from inferred_sections
+                'start_fmt_time': matching_start_data.get('fmt_time'),
+                'end_fmt_time': matching_end_data.get('fmt_time')
+            })
+    if perm_utils.permissions.get("segment_trip_time_min_users", 0) <= number_user_seen:
+        return pd.DataFrame.from_dict(vals)
+    return pd.DataFrame.from_dict([])
+
+# The following query can be called multiple times, so we extract index creation from the function
+analysis_timeseries_db = edb.get_analysis_timeseries_db()
+# In theory, adding an index on the cleaned_section should improve query performance
+analysis_timeseries_db.create_index([('data.cleaned_section', pymongo.ASCENDING)])
+
+# When sections isn't set, this fetches all inferred_section
+# Otherwise, it filters on given section ids using '$in'
+# Note: for performance reasons, it is not recommended to use '$in' a list bigger than ~100 values
+# In our use case, this could happen on popular trips, but the delay is deemed acceptable
+def query_inferred_sections_modes(sections=[]):
+    query = {'metadata.key': 'analysis/inferred_section'}
+    if len(sections) > 0:
+        query['data.cleaned_section'] = {'$in': sections} 
+    res = analysis_timeseries_db.find(query, {'data.cleaned_section': 1, 'data.sensed_mode': 1})
+    mode_by_section_id = {}
+    for elt in res:
+        elt_data = elt.get('data')
+        if elt_data:
+            mode_by_section_id[str(elt_data.get('cleaned_section'))] = elt_data.get('sensed_mode') or 0
+    return mode_by_section_id
