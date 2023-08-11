@@ -257,7 +257,7 @@ def generate_content_on_endpoints_change(link_trip_time_start, link_trip_time_en
                         ),
                         html.Br(),
                         html.H4(
-                            'Median segment duration by mode and hour of the day (UTC)'
+                            'Median segment duration by hour of the day (UTC)'
                         ),
                         dash_table.DataTable(
                             id='duration_per_hour',

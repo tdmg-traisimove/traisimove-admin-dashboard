@@ -135,7 +135,7 @@ specified in the following sections.
 
 ### Segment Trip Time Page
 - `segment_trip_time`: User can view this page. (default `true`)
-- `segment_trip_time_full_trips`: User can see the table containing non-agregated data (default `true`)
+- `segment_trip_time_full_trips`: User can see the table containing non-aggregated data (default `true`)
 - `segment_trip_time_min_users`: Minimal number of distinct users in data required to display anything (value is a number, default `0`).
 
 ### Push Notification Page
