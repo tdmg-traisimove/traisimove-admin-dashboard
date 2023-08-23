@@ -15,11 +15,3 @@ flask==2.2.5
 flask-talisman==1.0.0
 dash_auth==2.0.0
 dash-leaflet==0.1.28
-
-# emission requirements
-arrow==1.2.3
-pymongo==4.4.1
-pandas==2.0.3
-future==0.18.3
-attrdict==2.0.1
-geojson==3.0.1
