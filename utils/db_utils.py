@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import arrow
-from bson.son import SON
 
 import pandas as pd
 import pymongo
@@ -163,9 +162,28 @@ def add_user_stats(user_data):
 
 def query_segments_crossing_endpoints(start_lat, start_long, end_lat, end_long, range_around_endpoints=400):
     # data.loc only appears in analysis/recreated_location
-    query_start = {'data.loc': {'$near': SON([('$geometry', SON([('type', 'Point'), ('coordinates', [start_long, start_lat])])), ('$maxDistance', range_around_endpoints)])}}
-    query_end = {'data.loc': {'$near': SON([('$geometry', SON([('type', 'Point'), ('coordinates', [end_long, end_lat])])), ('$maxDistance', range_around_endpoints)])}}
-    
+    query_start = {
+        'data.loc': {
+            '$near': {
+                '$geometry': {
+                    'type': 'Point',
+                    'coordinates': [start_long, start_lat]
+                }, 
+                '$maxDistance': range_around_endpoints
+            }
+        }
+    }
+    query_end = {
+        'data.loc': {
+            '$near': {
+                '$geometry': {
+                    'type': 'Point',
+                    'coordinates': [end_long, end_lat]
+                }, 
+                '$maxDistance': range_around_endpoints
+            }
+        }
+    }
     res_end = edb.get_analysis_timeseries_db().find(query_end)
     end_by_section = {}
     for elt in res_end:
