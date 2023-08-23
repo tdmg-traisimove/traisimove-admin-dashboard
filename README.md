@@ -5,9 +5,9 @@ https://towardsdatascience.com/dockerize-your-dash-app-1e155dd1cea3
 
 ## How to run it: Docker Compose (recommended)
 
-`docker compose -f docker-compose-dash-app.yml build`
+`docker compose -f docker-compose-dev.yml build`
 
-`docker compose -f docker-compose-dash-app.yml up`
+`docker compose -f docker-compose-dev.yml up`
 
 You **must** use this method. Do **not** try to directly by setting up a virtualenv with the `requirements.txt`
 This uses components of the e-mission-server core, so it must have the e-mission-server modules in the PYTHONPATH
