@@ -223,10 +223,8 @@ def query_segments_crossing_endpoints(start_lat, start_long, end_lat, end_long, 
         return pd.DataFrame.from_dict(vals)
     return pd.DataFrame.from_dict([])
 
-# The following query can be called multiple times, so we extract index creation from the function
+# The following query can be called multiple times, let's open db only once
 analysis_timeseries_db = edb.get_analysis_timeseries_db()
-# In theory, adding an index on the cleaned_section should improve query performance
-analysis_timeseries_db.create_index([('data.cleaned_section', pymongo.ASCENDING)])
 
 # When sections isn't set, this fetches all inferred_section
 # Otherwise, it filters on given section ids using '$in'
