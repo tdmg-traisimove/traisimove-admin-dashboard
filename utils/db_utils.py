@@ -12,6 +12,8 @@ import emission.storage.timeseries.abstract_timeseries as esta
 import emission.storage.timeseries.aggregate_timeseries as estag
 import emission.storage.timeseries.timequery as estt
 import emission.storage.timeseries.geoquery as estg
+import emission.storage.decorations.section_queries as esds
+import emission.core.wrapper.modeprediction as ecwm
 
 from utils import constants
 from utils import permissions as perm_utils
@@ -181,6 +183,7 @@ def query_segments_crossing_endpoints(poly_region_start, poly_region_end):
     filtered['mode'] = filtered['mode_x']
     filtered['start_fmt_time'] = filtered['fmt_time_x']
     filtered['end_fmt_time'] = filtered['fmt_time_y']
+    filtered['user_id'] = filtered['user_id_y']
     
     number_user_seen = filtered.user_id_x.nunique()
 
@@ -191,18 +194,14 @@ def query_segments_crossing_endpoints(poly_region_start, poly_region_end):
 # The following query can be called multiple times, let's open db only once
 analysis_timeseries_db = edb.get_analysis_timeseries_db()
 
-# When sections isn't set, this fetches all inferred_section
-# Otherwise, it filters on given section ids using '$in'
-# Note: for performance reasons, it is not recommended to use '$in' a list bigger than ~100 values
-# In our use case, this could happen on popular trips, but the delay is deemed acceptable
-def query_inferred_sections_modes(sections=[]):
-    query = {'metadata.key': 'analysis/inferred_section'}
-    if len(sections) > 0:
-        query['data.cleaned_section'] = {'$in': sections} 
-    res = analysis_timeseries_db.find(query, {'data.cleaned_section': 1, 'data.sensed_mode': 1})
+# Fetches sensed_mode for each section in a list
+# sections format example: [{'section': ObjectId('648d02b227fd2bb6635414a0'), 'user_id': UUID('6d7edf29-8b3f-451b-8d66-984cb8dd8906')}]
+def query_inferred_sections_modes(sections):
     mode_by_section_id = {}
-    for elt in res:
-        elt_data = elt.get('data')
-        if elt_data:
-            mode_by_section_id[str(elt_data.get('cleaned_section'))] = elt_data.get('sensed_mode') or 0
+    for section in sections:
+        matching_inferred_section = esds.cleaned2inferred_section(section.get('user_id'), section.get('section'))
+        if matching_inferred_section is None:
+            mode_by_section_id[str(section.get('section'))] = ecwm.PredictedModeTypes.UNKNOWN
+        else:
+            mode_by_section_id[str(section.get('section'))] = matching_inferred_section.data.sensed_mode # PredictedModeTypes
     return mode_by_section_id

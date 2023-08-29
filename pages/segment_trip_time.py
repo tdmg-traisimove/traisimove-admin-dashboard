@@ -3,7 +3,6 @@ import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import pandas as pd
 
-import emission.core.wrapper.modeprediction as ecwm
 import logging
 import json
 
@@ -175,16 +174,15 @@ def generate_content_on_endpoints_change(link_trip_time_start_str, link_trip_tim
     )
     total_nb_trips = df.shape[0]
     if total_nb_trips > 0:
-        modes = [e.name for e in ecwm.PredictedModeTypes]
         # Warning: Another db call here.
         # In theory, we could load all inferred_section modes in memory at start time, instead of fetching it everytime
         # However, when testing it, the operation is quite heavy on the db and on ram.
         # I opted for querying only sections we're interested in, every time. Page load is still decent, especially when the number of section is low.
         mode_by_section_id = db_utils.query_inferred_sections_modes(
-            df['section'].to_list()
+            df[['section', 'user_id']].to_dict('records')
         )
         df['mode'] = df['section'].apply(
-            lambda section_id: modes[mode_by_section_id[str(section_id)]]
+            lambda section_id: mode_by_section_id[str(section_id)].name
         )
         median_trip_time = df['duration'].median()
         times = pd.to_datetime(df['start_fmt_time'], errors='coerce', utc=True)
@@ -284,13 +282,3 @@ def generate_content_on_endpoints_change(link_trip_time_start_str, link_trip_tim
             ]
         )
     return [html.H3('Results'), dcc.Markdown(not_enough_data_message)]
-
-
-# This is left as an example on loading all inferred_section modes in memory at start time, instead of fetching it everytime
-# This lead to poor memory performances on a larger db
-# @callback(
-#     Output('store-mode-by-section-id', 'data'),
-#     Input('store-trips', 'data') # Only using this an initial trigger
-# )
-# def load_mode_by_section_id(s):
-#     return db_utils.query_inferred_sections_modes()
