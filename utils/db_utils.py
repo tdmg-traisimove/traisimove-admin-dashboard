@@ -9,7 +9,9 @@ import pymongo
 
 import emission.core.get_database as edb
 import emission.storage.timeseries.abstract_timeseries as esta
+import emission.storage.timeseries.aggregate_timeseries as estag
 import emission.storage.timeseries.timequery as estt
+import emission.storage.timeseries.geoquery as estg
 
 from utils import constants
 from utils import permissions as perm_utils
@@ -160,85 +162,30 @@ def add_user_stats(user_data):
 
     return user_data
 
-def query_segments_crossing_endpoints(start_lat, start_long, end_lat, end_long, range_around_endpoints=400):
-    # data.loc only appears in analysis/recreated_location
-    query_start = {
-        'data.loc': {
-            '$near': {
-                '$geometry': {
-                    'type': 'Point',
-                    'coordinates': [start_long, start_lat]
-                }, 
-                '$maxDistance': range_around_endpoints
-            }
-        }
-    }
-    query_end = {
-        'data.loc': {
-            '$near': {
-                '$geometry': {
-                    'type': 'Point',
-                    'coordinates': [end_long, end_lat]
-                }, 
-                '$maxDistance': range_around_endpoints
-            }
-        }
-    }
-    res_end = edb.get_analysis_timeseries_db().find(query_end)
-    end_by_section = {}
-    for elt in res_end:
-        elt_data = elt.get('data')
-        if elt_data:
-            section_id = elt_data.get('section')
-            # This makes sure that only the first encounter of the section is added
-            # The near query gives closest points first, so the first one is the one we want
-            if section_id not in end_by_section:
-                end_by_section[section_id] = elt
+def query_segments_crossing_endpoints(poly_region_start, poly_region_end):
+    agg_ts = estag.AggregateTimeSeries().get_aggregate_time_series()
+
+    locs_matching_start = agg_ts.get_data_df("analysis/recreated_location", geo_query = estg.GeoQuery(['data.loc'], poly_region_start))
+    locs_matching_start = locs_matching_start.drop_duplicates(subset=['section'])
+    if locs_matching_start.empty:
+        return locs_matching_start
     
-    res_start = edb.get_analysis_timeseries_db().find(query_start)
-    start_by_section = {}
-    for elt in res_start:
-        elt_data = elt.get('data')
-        if elt_data:
-            section_id = elt_data.get('section')
-            if section_id not in start_by_section:
-                start_by_section[section_id] = elt
+    locs_matching_end = agg_ts.get_data_df("analysis/recreated_location", geo_query = estg.GeoQuery(['data.loc'], poly_region_end))
+    locs_matching_end = locs_matching_end.drop_duplicates(subset=['section'])
+    if locs_matching_end.empty:
+        return locs_matching_end
     
-    vals = []
-    user_id_seen_dict = {}
-    number_user_seen = 0
-    # Now we can read every section crossing start point
-    for section_id in start_by_section:
-        matching_start = start_by_section[section_id]
-        matching_start_data = matching_start.get('data')
-        if matching_start_data is None:
-            # Something is wrong with the fetched data, shouldn't happen
-            continue
-        if 'idx' not in matching_start_data:
-            # Sometimes, idx is missing in data, not sure why
-            continue
-        matching_end = end_by_section.get(section_id)
-        if matching_end is None:
-            # This section_id didn't cross the end point
-            continue
-        matching_end_data = matching_end.get('data', {})
-        # idx allows us to check that the start section is crossed first, we do not care about trips going the other way
-        if 'idx' in matching_end_data and matching_start_data.get('idx') < matching_end_data.get('idx'):
-            user_id = str(start_by_section[section_id].get('user_id'))
-            if user_id_seen_dict.get(user_id) is None:
-                number_user_seen += 1
-                user_id_seen_dict[user_id] = True
-            vals.append({
-                'start': start_by_section[section_id], 
-                'end': end_by_section[section_id], 
-                'duration': matching_end_data.get('ts') - matching_start_data.get('ts'),
-                'section': section_id, 
-                'mode': matching_start_data.get('mode'), # Note: this is the mode given by the phone, not the computed one, we'll read it later from inferred_sections
-                'start_fmt_time': matching_start_data.get('fmt_time'),
-                'end_fmt_time': matching_end_data.get('fmt_time')
-            })
+    merged = locs_matching_start.merge(locs_matching_end, how='outer', on=['section'])
+    filtered = merged.loc[merged['idx_x']<merged['idx_y']].copy()
+    filtered['duration'] = filtered['ts_y'] - filtered['ts_x']
+    filtered['mode'] = filtered['mode_x']
+    filtered['start_fmt_time'] = filtered['fmt_time_x']
+    filtered['end_fmt_time'] = filtered['fmt_time_y']
+    
+    number_user_seen = filtered.user_id_x.nunique()
+
     if perm_utils.permissions.get("segment_trip_time_min_users", 0) <= number_user_seen:
-        return pd.DataFrame.from_dict(vals)
+        return filtered
     return pd.DataFrame.from_dict([])
 
 # The following query can be called multiple times, let's open db only once

@@ -5,6 +5,7 @@ import pandas as pd
 
 import emission.core.wrapper.modeprediction as ecwm
 import logging
+import json
 
 from utils.permissions import has_permission, permissions
 from utils import db_utils
@@ -13,69 +14,76 @@ register_page(__name__, path="/segment_trip_time")
 
 intro = """
 ## Segment average trip time
-This page displays some statistics on average trip duration between two selected points.
+This page displays some statistics on average trip duration between two selected zones.
+
+### Usage
+Using the polygon or square tools on the maps' menu, draw the start (left map) and end (right map) zones to consider.
+
+Data will then be fetched for trips crossing the start zone and then the end zone.
+
+Here are some tips on how to draw zones:
+* Zones shouldn't cover more than one parallel road; otherwise, it is unclear which path the user took.
+* A bigger zone will give more results, at the cost of lower accuracy in trip durations (the start point could be anywhere in the zone).
+* For exhaustivity, zone length should somewhat match the distance a vehicle can cross at the maximum allowed speed in 30 seconds (sample rate).
+* A smaller zone will give more accurate time results, but the number of trips might be too low to be significant.
+* Zones can be moved and edited using the Edit layer menu, and they can be deleted with the Delete layer button.
+* Please be advised that only the last added zone will be considered on each map. It is thus advised to delete existing zones before creating new ones.
 """
 
-first_step = """
-### First, select a detection radius.
-This is the range in meters around start and end point where GPS data can be detected, closest data is prioritized.
-
-This should somewhat match the distance a vehicle can cross at the maximum allowed speed in 30 seconds (sample rate).
-
-A bigger number means more trips will be considered, however it might find trips on the wrong road if roads are close enough.
-"""
-
-second_step = """
-### Then, select start and end points
-These can be anywhere on the map, but are usually on road intersections.
-
-A circle will be shown with the detection radius set on the previous step. For accurate results, the circle should not cover more than one parallel road.
-"""
 
 not_enough_data_message = f"""
 Not enough segments could be found between endpoints. This means that the number of recorded trips going from start to end point is too low. 
 * There could be data, but on an insufficient number of users, breaking anonymity (minimum number of users is currently set to {permissions.get('segment_trip_time_min_users', 0)})
-* You could try to increase the detection radius, or chose different start and end points.
+* You could try to increase the zone sizes, or chose different start and end points.
 """
 
+initial_maps_center = [32.7, -96.8]
+initial_maps_zoom = 5
 layout = html.Div(
     [
-        dcc.Store(id='link-trip-time-start', data=(0, 0)),
-        dcc.Store(id='link-trip-time-end', data=(0, 0)),
-        # dcc.Store(id='store-mode-by-section-id', data={}),
+        dcc.Store(id='link-trip-time-start', data=json.dumps({"features": []})),
+        dcc.Store(id='link-trip-time-end', data=json.dumps({"features": []})),
         dcc.Markdown(intro),
-        dcc.Markdown(first_step),
-        dcc.Slider(
-            0,
-            2500,
-            id='detection-radius',
-            value=200,
-            tooltip={"placement": "bottom", "always_visible": True},
-        ),
-        dcc.Markdown(second_step),
         dbc.Row(
             [
                 dbc.Col(
                     [
-                        html.H4('Start point selection'),
+                        html.H4('Start zone selection'),
                         dl.Map(
-                            [dl.TileLayer(), dl.LayerGroup(id='stt-trip-layer-start')],
+                            [
+                                dl.TileLayer(), 
+                                dl.FeatureGroup([
+                                    dl.EditControl(
+                                        id="stt-edit-control-start", 
+                                        draw=dict(circle=False, marker=False, polyline=False, circlemarker=False)
+                                    )
+                                ])
+                            ],
+                            #[dl.TileLayer(), dl.LayerGroup(id='stt-trip-layer-start')],
                             id='stt-trip-map-start',
                             style={'height': '500px'},
-                            center=[32.7, -96.8],
-                            zoom=5,
+                            center=initial_maps_center,
+                            zoom=initial_maps_zoom
                         ),
                     ]
                 ),
                 dbc.Col(
                     [
-                        html.H4('End point selection'),
+                        html.H4('End zone selection'),
                         dl.Map(
-                            [dl.TileLayer(), dl.LayerGroup(id='stt-trip-layer-end')],
+                            [
+                                dl.TileLayer(), 
+                                dl.FeatureGroup([
+                                    dl.EditControl(
+                                        id="stt-edit-control-end", 
+                                        draw=dict(circle=False, marker=False, polyline=False, circlemarker=False)
+                                    )
+                                ])
+                            ],
                             id='stt-trip-map-end',
                             style={'height': '500px'},
-                            center=[32.7, -96.8],
-                            zoom=5,
+                            center=initial_maps_center,
+                            zoom=initial_maps_zoom
                         ),
                     ]
                 ),
@@ -88,59 +96,23 @@ layout = html.Div(
 )
 
 
-def map_click(click_lat_lng, radius, circle_color):
-    # WARN: There seem to be a bug on click_lat_lng leaflet event, values can be out of bound (e.g: -357 for lat in eu), some kind of modulus might be required
-    # Couldn't reproduce it though
-    layer_children = [
-        dl.Circle(center=click_lat_lng, radius=radius, color=circle_color)
-    ]
-    endpoint_coords = click_lat_lng
-    zoom = 13
-    map_center = click_lat_lng
-    return layer_children, endpoint_coords, zoom, map_center
-
 
 @callback(
-    Output('stt-trip-map-end', 'zoom', allow_duplicate=True),
-    Output('stt-trip-map-end', 'center', allow_duplicate=True),
-    Input('link-trip-time-start', 'data'),
-    State('stt-trip-map-end', 'zoom'),
-    State('stt-trip-map-end', 'center'),
-    State('link-trip-time-end', 'data'),
-    prevent_initial_call=True,
-)
-# This is optional, it's used on first selection to help user locate his endpoint
-def center_end_map_helper(link_trip_time_start, end_zoom, end_center, link_trip_time_end):
-    if link_trip_time_end[0] == 0:
-        end_zoom = 13
-        end_center = link_trip_time_start
-    return end_zoom, end_center
-
-
-@callback(
-    Output('stt-trip-layer-start', 'children'),
     Output('link-trip-time-start', 'data'),
-    Output('stt-trip-map-start', 'zoom'),
-    Output('stt-trip-map-start', 'center'),
-    Input('stt-trip-map-start', 'click_lat_lng'),
-    State('detection-radius', 'value'),
+    Input('stt-edit-control-start', 'geojson'),
     prevent_initial_call=True,
 )
-def map_start_click(click_lat_lng, radius):
-    return map_click(click_lat_lng, radius, "green")
-
+def map_start_draw(geojson):
+    return json.dumps(geojson)
 
 @callback(
-    Output('stt-trip-layer-end', 'children'),
     Output('link-trip-time-end', 'data'),
-    Output('stt-trip-map-end', 'zoom'),
-    Output('stt-trip-map-end', 'center'),
-    Input('stt-trip-map-end', 'click_lat_lng'),
-    State('detection-radius', 'value'),
+    Input('stt-edit-control-end', 'geojson'),
     prevent_initial_call=True,
 )
-def map_end_click(click_lat_lng, radius):
-    return map_click(click_lat_lng, radius, "red")
+def map_end_draw(geojson):
+    return json.dumps(geojson)
+
 
 
 def format_duration_df(df, time_column_name='Time sample'):
@@ -185,11 +157,12 @@ def format_duration_df(df, time_column_name='Time sample'):
     Output('message', 'children'),
     Input('link-trip-time-start', 'data'),
     Input('link-trip-time-end', 'data'),
-    State('detection-radius', 'value'),
     prevent_initial_call=True,
 )
-def generate_content_on_endpoints_change(link_trip_time_start, link_trip_time_end, radius):
-    if link_trip_time_end[0] == 0 or link_trip_time_start[0] == 0:
+def generate_content_on_endpoints_change(link_trip_time_start_str, link_trip_time_end_str):
+    link_trip_time_start = json.loads(link_trip_time_start_str)
+    link_trip_time_end = json.loads(link_trip_time_end_str)
+    if len(link_trip_time_end["features"]) == 0 or len(link_trip_time_start["features"]) == 0:
         return ''
     # logging.debug("link_trip_time_start: " + str(link_trip_time_start))
     # logging.debug("link_trip_time_end: " + str(link_trip_time_end))
@@ -197,11 +170,8 @@ def generate_content_on_endpoints_change(link_trip_time_start, link_trip_time_en
     # Warning: This is a database call, looks here if there is a performance hog.
     # From initial tests, this seems to be performing well, without the need to do geoqueries in memory
     df = db_utils.query_segments_crossing_endpoints(
-        link_trip_time_start[0],
-        link_trip_time_start[1],
-        link_trip_time_end[0],
-        link_trip_time_end[1],
-        radius,
+        link_trip_time_start["features"][len(link_trip_time_start["features"])-1],
+        link_trip_time_end["features"][len(link_trip_time_end["features"])-1],
     )
     total_nb_trips = df.shape[0]
     if total_nb_trips > 0:
