@@ -65,6 +65,7 @@ These are all the permissions that you can specify:
 ### Data Page
 - `data_uuids`: User can view the UUIDs data in the Data page.
 - `data_trips`: User can view the trips data in the Data page.
+- `data_demographics`: User can view the trips data in the Data page.
 - `data_trips_columns_exclude`: It used to specify a list of column names that should be excluded from the trips data
 that is displayed on the Data page. It includes valid columns from the **Stage_analysis_timeseries** collection. Valid
 columns are specified in the following sections.
