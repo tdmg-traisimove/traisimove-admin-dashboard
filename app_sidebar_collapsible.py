@@ -157,13 +157,24 @@ home_page = [
     content,
 ]
 
+def update_store_demographics():
+    df = query_demographics()
+    records = df.to_dict("records")
+    
+    store = {
+        "data": records,
+        "length": len(records),
+    }
+    return store
+
+demographics_data = update_store_demographics()
 
 app.layout = html.Div(
     [
         dcc.Location(id='url', refresh=False),
         dcc.Store(id='store-trips', data={}),
         dcc.Store(id='store-uuids', data={}),
-        dcc.Store(id='store-demographics', data={}),
+        dcc.Store(id='store-demographics', data= demographics_data),
         html.Div(id='page-content', children=home_page),
     ]
 )
@@ -198,25 +209,6 @@ def update_store_trips(start_date, end_date):
     df = query_confirmed_trips(start_date_obj, end_date_obj)
     records = df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
-    store = {
-        "data": records,
-        "length": len(records),
-    }
-    return store
-
-
-@app.callback(
-    Output("store-demographics", "data"),
-    Input('date-picker', 'start_date'),
-    Input('date-picker', 'end_date'), 
-)
-def update_store_demographics(start_date, end_date):
-    start_date_obj = date.fromisoformat(start_date) if start_date else None
-    end_date_obj = date.fromisoformat(end_date) if end_date else None
-    df = query_demographics(start_date_obj, end_date_obj)
-    
-    records = df.to_dict("records")
-
     store = {
         "data": records,
         "length": len(records),

@@ -100,14 +100,7 @@ def query_confirmed_trips(start_date, end_date):
     # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
     return df
 
-def query_demographics(start_date, end_date):
-    start_ts, end_ts = None, datetime.max.timestamp()
-    if start_date is not None:
-        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
-
-    if end_date is not None:
-        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
-
+def query_demographics():
     ts = esta.TimeSeries.get_aggregate_time_series()
     
     entries = ts.find_entries(
@@ -115,10 +108,8 @@ def query_demographics(start_date, end_date):
     )
 
     df = pd.json_normalize(list(entries))
-    
+
     if not df.empty:
-        columns = [col for col in perm_utils.get_demographics_columns() if col in df.columns]
-        df = df[columns]
         for col in constants.BINARY_DEMOGRAPHICS_COLS:
             if col in df.columns:
                 df[col] = df[col].apply(str)  
