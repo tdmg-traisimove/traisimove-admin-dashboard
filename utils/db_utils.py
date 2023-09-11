@@ -39,8 +39,6 @@ def query_uuids(start_date, end_date):
     # that with the profile data
     entries = edb.get_uuid_db().find()
     df = pd.json_normalize(list(entries))
-    
-    # TODO: entires are empty here so UUIDS dataframe is not showing anything
     if not df.empty:
         df['update_ts'] = pd.to_datetime(df['update_ts'])
         df['user_id'] = df['uuid'].apply(str)
@@ -103,12 +101,8 @@ def query_confirmed_trips(start_date, end_date):
 def query_demographics():
     ts = esta.TimeSeries.get_aggregate_time_series()
     
-    entries = ts.find_entries(
-        key_list=["manual/demographic_survey"],
-    )
-
+    entries = ts.find_entries(["manual/demographic_survey"])
     df = pd.json_normalize(list(entries))
-
     if not df.empty:
         for col in constants.BINARY_DEMOGRAPHICS_COLS:
             if col in df.columns:
