@@ -107,7 +107,9 @@ def query_demographics():
         for col in constants.BINARY_DEMOGRAPHICS_COLS:
             if col in df.columns:
                 df[col] = df[col].apply(str)  
-    df.drop(columns=['data.xmlResponse', 'data.name', 'data.version', 'data.label'], inplace=True)        
+    df.drop(columns=['data.xmlResponse', 'data.name', 'data.version', 'data.label'], inplace=True) 
+    modified_columns = perm_utils.get_demographic_columns(df.columns)  
+    df.columns = modified_columns     
     return df
 
 

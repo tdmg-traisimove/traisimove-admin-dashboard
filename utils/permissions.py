@@ -91,6 +91,10 @@ def get_uuids_columns():
         columns.discard(column)
     return columns
 
+def get_demographic_columns(columns):
+    for column in permissions.get("data_demographics_columns_exclude", []):
+        columns.discard(column)
+    return columns
 
 def get_token_prefix():
     return permissions['token_prefix'] + '_' if permissions.get('token_prefix') else ''

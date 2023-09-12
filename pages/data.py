@@ -62,8 +62,6 @@ def render_content(tab, store_uuids, store_trips, store_demographics):
     elif tab == 'tab-demographics-datatable':
         data = store_demographics["data"]
         columns = list(data[0].keys())
-        for column in perm_utils.permissions.get("data_demographics_columns_exclude", []):
-            columns.discard(column)
         has_perm = perm_utils.has_permission('data_demographics')
        
     df = pd.DataFrame(data)

@@ -72,6 +72,8 @@ columns are specified in the following sections.
 - `data_uuids_columns_exclude`: It used to specify a list of column names that should be excluded from the uuids data
 that is displayed on the Data page. It includes valid columns from the **Stage_uuids** collection. Valid columns are 
 specified in the following sections.
+- `data_demographics_columns_exclude`: It used to specify a list of column names that should be excluded from the demographics data
+that is displayed on the Data page. 
 
 ### Token Page
 - `token_generate`: User can generate new tokens in the Token page.
