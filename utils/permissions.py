@@ -29,6 +29,10 @@ surveyinfo = config.get("survey_info",
     })
 permissions = config.get("admin_dashboard", {})
 
+# TODO: The current dynamic config does not have the data_demographics_columns_exclude.
+# When all the current studies are completed we can remove the below changes.
+if 'data_demographics_columns_exclude' not in permissions:
+    permissions['data_demographics_columns_exclude'] = []
 
 def has_permission(perm):
     return False if permissions.get(perm) is False else True
@@ -87,6 +91,10 @@ def get_uuids_columns():
         columns.discard(column)
     return columns
 
+def get_demographic_columns(columns):
+    for column in permissions.get("data_demographics_columns_exclude", []):
+        columns.discard(column)
+    return columns
 
 def get_token_prefix():
     return permissions['token_prefix'] + '_' if permissions.get('token_prefix') else ''

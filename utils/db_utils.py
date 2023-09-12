@@ -98,6 +98,24 @@ def query_confirmed_trips(start_date, end_date):
     # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
     return df
 
+def query_demographics():
+    ts = esta.TimeSeries.get_aggregate_time_series()
+    
+    entries = ts.find_entries(["manual/demographic_survey"])
+    df = pd.json_normalize(list(entries))
+    if not df.empty:
+        for col in constants.BINARY_DEMOGRAPHICS_COLS:
+            if col in df.columns:
+                df[col] = df[col].apply(str) 
+    columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
+    df.drop(columns= columns_to_drop, inplace=True) 
+    df.drop(columns=['data.xmlResponse', 'data.name', 'data.version', 'data.label'], inplace=True) 
+    modified_columns = perm_utils.get_demographic_columns(df.columns)  
+    df.columns = modified_columns 
+    df.columns=[col.rsplit('.',1)[-1] if col.startswith('data.jsonDocResponse.') else col for col in df.columns]  
+    df.drop(columns=['xmlns:jr', 'xmlns:orx', 'id'], inplace = True) 
+    return df
+
 
 def add_user_stats(user_data):
     for user in user_data:

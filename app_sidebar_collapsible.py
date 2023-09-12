@@ -23,7 +23,7 @@ import logging
 if os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true':
     logging.basicConfig(level=logging.DEBUG)
 
-from utils.db_utils import query_uuids, query_confirmed_trips
+from utils.db_utils import query_uuids, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission
 import flask_talisman as flt
 
@@ -157,12 +157,24 @@ home_page = [
     content,
 ]
 
+def update_store_demographics():
+    df = query_demographics()
+    records = df.to_dict("records")
+    
+    store = {
+        "data": records,
+        "length": len(records),
+    }
+    return store
+
+demographics_data = update_store_demographics()
 
 app.layout = html.Div(
     [
         dcc.Location(id='url', refresh=False),
         dcc.Store(id='store-trips', data={}),
         dcc.Store(id='store-uuids', data={}),
+        dcc.Store(id='store-demographics', data= demographics_data),
         html.Div(id='page-content', children=home_page),
     ]
 )
