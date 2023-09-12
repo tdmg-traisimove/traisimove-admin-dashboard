@@ -106,10 +106,13 @@ def query_demographics():
     if not df.empty:
         for col in constants.BINARY_DEMOGRAPHICS_COLS:
             if col in df.columns:
-                df[col] = df[col].apply(str)  
-    df.drop(columns=['data.xmlResponse', 'data.name', 'data.version', 'data.label'], inplace=True) 
+                df[col] = df[col].apply(str) 
+    columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
+    df.drop(columns= columns_to_drop, inplace=True) 
+    df.drop(columns=['data.xmlResponse', 'data.name', 'data.version', 'data.label', 'data.jsonDocResponse.aSfdnWs9LE6q8YEF7u9n85.attr.id','data.jsonDocResponse.aSfdnWs9LE6q8YEF7u9n85.attr.xmlns:jr','data.jsonDocResponse.aSfdnWs9LE6q8YEF7u9n85.attr.xmlns:orx'], inplace=True) 
     modified_columns = perm_utils.get_demographic_columns(df.columns)  
-    df.columns = modified_columns     
+    df.columns = modified_columns 
+    df.columns=[col.rsplit('.',1)[-1] if col.startswith('data.jsonDocResponse.') else col for col in df.columns]   
     return df
 
 
