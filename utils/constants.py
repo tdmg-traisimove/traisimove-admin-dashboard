@@ -44,3 +44,8 @@ valid_uuids_columns = [
     'os_version',
     'phone_lang',
 ]
+
+BINARY_DEMOGRAPHICS_COLS = [
+    'user_id',
+    '_id',
+]

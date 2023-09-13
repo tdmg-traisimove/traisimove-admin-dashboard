@@ -3,70 +3,15 @@
 
 https://towardsdatascience.com/dockerize-your-dash-app-1e155dd1cea3
 
+## How to run it: Docker Compose (recommended)
 
-Basic Dash app with data load, global variable module, and various UI examples.
+`docker compose -f docker-compose-dev.yml build`
 
-### NREL Branding
-This app uses the NREL Branding component, which is included as a .tgz and is installed via pip (see below).
+`docker compose -f docker-compose-dev.yml up`
 
-
-## How to run this app
-
-(The following instructions apply to Windows command line.)
-
-Create and activate a new virtual environment (recommended) by running
-the following:
-
-On Windows
-
-```
-virtualenv venv
-\venv\scripts\activate
-```
-On Mac
-```
-virtualenv venv
-source venv/bin/activate
-```
-
-Or if using linux
-
-```bash
-python3 -m venv myvenv
-source myvenv/bin/activate
-```
-
-Install the requirements:
-
-```
-pip install -r dashboard/requirements.txt
-```
-
-Run the app:
-
-```
-python app.py
-```
-You can run the app on your browser at http://127.0.0.1:8050
-
-
-
-## Resources
-
-To learn more about Dash, please visit [documentation](https://plot.ly/dash).
-
-
-## Docker
-
-`docker build -t dash-app .`
-
-`docker run dash-app`
-
-## Docker Compose (recommended)
-
-`docker compose -f docker-compose-dash-app.yml build`
-
-`docker compose -f docker-compose-dash-app.yml up`
+You **must** use this method. Do **not** try to directly by setting up a virtualenv with the `requirements.txt`
+This uses components of the e-mission-server core, so it must have the e-mission-server modules in the PYTHONPATH
+The easiest method to accomplish this is to use the docker container, which is built on top of the e-mission-server base docker container.
 
 ## Test with a reverse proxy
 
@@ -74,6 +19,9 @@ To learn more about Dash, please visit [documentation](https://plot.ly/dash).
 docker-compose -f docker-compose-prod-nginx.yml build
 docker-compose -f docker-compose-prod-nginx.yml up -d
 ```
+
+The dash component assumes that it is running from the host root, and will barf if you try to run it behind a reverse proxy with a different file prefix.
+This setting tests that configuration using an embedded reverse proxy in the docker container.
 
 # Dynamic Config
 
@@ -117,12 +65,15 @@ These are all the permissions that you can specify:
 ### Data Page
 - `data_uuids`: User can view the UUIDs data in the Data page.
 - `data_trips`: User can view the trips data in the Data page.
+- `data_demographics`: User can view the demographics data in the Data page.
 - `data_trips_columns_exclude`: It used to specify a list of column names that should be excluded from the trips data
 that is displayed on the Data page. It includes valid columns from the **Stage_analysis_timeseries** collection. Valid
 columns are specified in the following sections.
 - `data_uuids_columns_exclude`: It used to specify a list of column names that should be excluded from the uuids data
 that is displayed on the Data page. It includes valid columns from the **Stage_uuids** collection. Valid columns are 
 specified in the following sections.
+- `data_demographics_columns_exclude`: It used to specify a list of column names that should be excluded from the demographics data
+that is displayed on the Data page. 
 
 ### Token Page
 - `token_generate`: User can generate new tokens in the Token page.
