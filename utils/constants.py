@@ -49,3 +49,10 @@ BINARY_DEMOGRAPHICS_COLS = [
     'user_id',
     '_id',
 ]
+
+BINARY_TRAJECTORIES_COLS = [
+    'user_id',
+    '_id',
+    'data.section',
+    'data.loc.coordinates'
+]

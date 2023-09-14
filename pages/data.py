@@ -23,7 +23,8 @@ layout = html.Div(
         dcc.Tabs(id="tabs-datatable", value='tab-uuids-datatable', children=[
             dcc.Tab(label='UUIDs', value='tab-uuids-datatable'),
             dcc.Tab(label='Trips', value='tab-trips-datatable'),
-            dcc.Tab(label='Demographics', value='tab-demographics-datatable' )
+            dcc.Tab(label='Demographics', value='tab-demographics-datatable'),
+            dcc.Tab(label='Trajectories', value='tab-trajectories-datatable'),
         ]),
         html.Div(id='tabs-content'),
     ]
@@ -44,8 +45,9 @@ def clean_location_data(df):
     Input('store-uuids', 'data'),
     Input('store-trips', 'data'),
     Input('store-demographics', 'data'),
+    Input('store-trajectories', 'data'),
 )
-def render_content(tab, store_uuids, store_trips, store_demographics):
+def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
@@ -63,6 +65,10 @@ def render_content(tab, store_uuids, store_trips, store_demographics):
         data = store_demographics["data"]
         columns = list(data[0].keys())
         has_perm = perm_utils.has_permission('data_demographics')
+    elif tab == 'tab-trajectories-datatable':
+        data = store_trajectories["data"]
+        columns = list(data[0].keys())
+        has_perm = perm_utils.has_permission('data_trajectories')
        
     df = pd.DataFrame(data)
     if df.empty or not has_perm:
