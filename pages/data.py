@@ -12,7 +12,7 @@ from dash.exceptions import PreventUpdate
 
 from utils import permissions as perm_utils
 from utils import db_utils
-
+from utils.db_utils import query_trajectories
 register_page(__name__, path="/data")
 
 intro = """## Data"""
@@ -37,6 +37,17 @@ def clean_location_data(df):
     if 'data.end_loc.coordinates' in df.columns:
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
+
+def update_store_trajectories():
+    global store_trajectories
+    df = query_trajectories()
+    records = df.to_dict("records")   
+    store = {
+        "data": records,
+        "length": len(records),
+    }
+    store_trajectories = store
+    return store
 
 
 @callback(
@@ -66,6 +77,8 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
         columns = list(data[0].keys())
         has_perm = perm_utils.has_permission('data_demographics')
     elif tab == 'tab-trajectories-datatable':
+        if store_trajectories == {}:
+            store_trajectories = update_store_trajectories()
         data = store_trajectories["data"]
         columns = list(data[0].keys())
         has_perm = perm_utils.has_permission('data_trajectories')
