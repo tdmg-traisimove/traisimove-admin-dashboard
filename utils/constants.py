@@ -50,9 +50,28 @@ BINARY_DEMOGRAPHICS_COLS = [
     '_id',
 ]
 
+
 BINARY_TRAJECTORIES_COLS = [
     'user_id',
     '_id',
     'data.section',
     'data.loc.coordinates'
+]
+
+EXCLUDED_DEMOGRAPHICS_COLS = [
+    'data.xmlResponse', 
+    'data.name',
+    'data.version',
+    'data.label',
+    'xmlns:jr',
+    'xmlns:orx',
+    'id',
+    'start',
+    'end',
+    'attrxmlns:jr',
+    'attrxmlns:orx',
+    'attrid',
+    '__version__',
+    'attrversion',
+    'instanceID',
 ]
