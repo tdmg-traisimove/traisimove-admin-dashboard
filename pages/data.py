@@ -77,6 +77,8 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
         columns = list(data[0].keys())
         has_perm = perm_utils.has_permission('data_demographics')
     elif tab == 'tab-trajectories-datatable':
+        # Currently store_trajectories data is loaded only when the respective tab is selected
+        #Here we query for trajectory data once "Trajectories" tab is selected
         if store_trajectories == {}:
             store_trajectories = update_store_trajectories()
         data = store_trajectories["data"]
