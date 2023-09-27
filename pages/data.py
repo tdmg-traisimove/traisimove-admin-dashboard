@@ -12,7 +12,7 @@ from dash.exceptions import PreventUpdate
 
 from utils import permissions as perm_utils
 from utils import db_utils
-
+from utils.db_utils import query_trajectories
 register_page(__name__, path="/data")
 
 intro = """## Data"""
@@ -23,7 +23,8 @@ layout = html.Div(
         dcc.Tabs(id="tabs-datatable", value='tab-uuids-datatable', children=[
             dcc.Tab(label='UUIDs', value='tab-uuids-datatable'),
             dcc.Tab(label='Trips', value='tab-trips-datatable'),
-            dcc.Tab(label='Demographics', value='tab-demographics-datatable' )
+            dcc.Tab(label='Demographics', value='tab-demographics-datatable'),
+            dcc.Tab(label='Trajectories', value='tab-trajectories-datatable'),
         ]),
         html.Div(id='tabs-content'),
     ]
@@ -37,6 +38,17 @@ def clean_location_data(df):
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
 
+def update_store_trajectories():
+    global store_trajectories
+    df = query_trajectories()
+    records = df.to_dict("records")   
+    store = {
+        "data": records,
+        "length": len(records),
+    }
+    store_trajectories = store
+    return store
+
 
 @callback(
     Output('tabs-content', 'children'),
@@ -44,8 +56,9 @@ def clean_location_data(df):
     Input('store-uuids', 'data'),
     Input('store-trips', 'data'),
     Input('store-demographics', 'data'),
+    Input('store-trajectories', 'data'),
 )
-def render_content(tab, store_uuids, store_trips, store_demographics):
+def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
@@ -63,6 +76,14 @@ def render_content(tab, store_uuids, store_trips, store_demographics):
         data = store_demographics["data"]
         columns = list(data[0].keys())
         has_perm = perm_utils.has_permission('data_demographics')
+    elif tab == 'tab-trajectories-datatable':
+        # Currently store_trajectories data is loaded only when the respective tab is selected
+        #Here we query for trajectory data once "Trajectories" tab is selected
+        if store_trajectories == {}:
+            store_trajectories = update_store_trajectories()
+        data = store_trajectories["data"]
+        columns = list(data[0].keys())
+        has_perm = perm_utils.has_permission('data_trajectories')
        
     df = pd.DataFrame(data)
     if df.empty or not has_perm:

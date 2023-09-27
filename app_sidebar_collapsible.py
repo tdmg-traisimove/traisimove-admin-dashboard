@@ -169,12 +169,14 @@ def update_store_demographics():
 
 demographics_data = update_store_demographics()
 
+
 app.layout = html.Div(
     [
         dcc.Location(id='url', refresh=False),
         dcc.Store(id='store-trips', data={}),
         dcc.Store(id='store-uuids', data={}),
         dcc.Store(id='store-demographics', data= demographics_data),
+        dcc.Store(id ='store-trajectories', data = {}),   
         html.Div(id='page-content', children=home_page),
     ]
 )

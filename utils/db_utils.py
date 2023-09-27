@@ -118,6 +118,24 @@ def query_demographics():
     return df
 
 
+def query_trajectories():
+    ts = esta.TimeSeries.get_aggregate_time_series()
+   
+    entries = ts.find_entries(
+        key_list=["analysis/recreated_location"],
+    )
+    df = pd.json_normalize(list(entries))
+    if not df.empty:
+        for col in constants.BINARY_TRAJECTORIES_COLS:
+            if col in df.columns:
+                df[col] = df[col].apply(str)  
+    columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
+    df.drop(columns= columns_to_drop, inplace=True) 
+    modified_columns = perm_utils.get_trajectories_columns(df.columns)  
+    df.columns = modified_columns 
+    return df
+
+
 def add_user_stats(user_data):
     for user in user_data:
         user_uuid = UUID(user['user_id'])
