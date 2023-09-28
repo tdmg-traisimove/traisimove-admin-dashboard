@@ -140,21 +140,15 @@ def add_user_stats(user_data):
     for user in user_data:
         user_uuid = UUID(user['user_id'])
 
-        # TODO: Use the time-series functions when the needed functionality is added.
-        total_trips = edb.get_analysis_timeseries_db().count_documents(
-            {
-                'user_id': user_uuid,
-                'metadata.key': 'analysis/confirmed_trip',
-            }
+        total_trips = esta.TimeSeries.get_aggregate_time_series().find_entries_count(
+            key_list=["analysis/confirmed_trip"],
+            extra_query_list=[{'user_id': user_uuid}]
         )
         user['total_trips'] = total_trips
 
-        labeled_trips = edb.get_analysis_timeseries_db().count_documents(
-            {
-                'user_id': user_uuid,
-                'metadata.key': 'analysis/confirmed_trip',
-                'data.user_input': {'$ne': {}},
-            }
+        labeled_trips = esta.TimeSeries.get_aggregate_time_series().find_entries_count(
+            key_list=["analysis/confirmed_trip"],
+            extra_query_list=[{'user_id': user_uuid}, {'data.user_input': {'$ne': {}}}]
         )
         user['labeled_trips'] = labeled_trips
 
