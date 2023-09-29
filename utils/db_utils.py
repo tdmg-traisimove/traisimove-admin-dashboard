@@ -126,9 +126,9 @@ def query_trajectories():
     )
     df = pd.json_normalize(list(entries))
     if not df.empty:
-        for col in constants.BINARY_TRAJECTORIES_COLS:
-            if col in df.columns:
-                df[col] = df[col].apply(str)  
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].apply(str)
     columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
     df.drop(columns= columns_to_drop, inplace=True) 
     modified_columns = perm_utils.get_trajectories_columns(df.columns)  
