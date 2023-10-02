@@ -118,11 +118,18 @@ def query_demographics():
     return df
 
 
-def query_trajectories():
+def query_trajectories(start_date, end_date):
+    start_ts, end_ts = None, datetime.max.timestamp()
+    if start_date is not None:
+        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
+
+    if end_date is not None:
+        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
     ts = esta.TimeSeries.get_aggregate_time_series()
    
     entries = ts.find_entries(
         key_list=["analysis/recreated_location"],
+        time_query=estt.TimeQuery("data.ts", start_ts, end_ts),
     )
     df = pd.json_normalize(list(entries))
     if not df.empty:
