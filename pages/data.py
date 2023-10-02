@@ -4,7 +4,7 @@ Since the dcc.Location component is not in the layout when navigating to this pa
 The workaround is to check if the input value is None.
 """
 from dash import dcc, html, Input, Output, callback, register_page, dash_table
-
+from datetime import date
 # Etc
 import logging
 import pandas as pd
@@ -38,9 +38,9 @@ def clean_location_data(df):
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
 
-def update_store_trajectories():
+def update_store_trajectories(start_date_obj,end_date_obj):
     global store_trajectories
-    df = query_trajectories()
+    df = query_trajectories(start_date_obj,end_date_obj)
     records = df.to_dict("records")   
     store = {
         "data": records,
@@ -57,8 +57,11 @@ def update_store_trajectories():
     Input('store-trips', 'data'),
     Input('store-demographics', 'data'),
     Input('store-trajectories', 'data'),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
+
 )
-def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories):
+def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
@@ -79,11 +82,14 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
     elif tab == 'tab-trajectories-datatable':
         # Currently store_trajectories data is loaded only when the respective tab is selected
         #Here we query for trajectory data once "Trajectories" tab is selected
+        start_date_obj = date.fromisoformat(start_date) if start_date else None
+        end_date_obj = date.fromisoformat(end_date) if end_date else None
         if store_trajectories == {}:
-            store_trajectories = update_store_trajectories()
+            store_trajectories = update_store_trajectories(start_date_obj,end_date_obj)
         data = store_trajectories["data"]
-        columns = list(data[0].keys())
-        has_perm = perm_utils.has_permission('data_trajectories')
+        if data:
+            columns = list(data[0].keys())
+            has_perm = perm_utils.has_permission('data_trajectories')
        
     df = pd.DataFrame(data)
     if df.empty or not has_perm:
