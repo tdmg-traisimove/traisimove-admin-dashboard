@@ -197,11 +197,5 @@ analysis_timeseries_db = edb.get_analysis_timeseries_db()
 # Fetches sensed_mode for each section in a list
 # sections format example: [{'section': ObjectId('648d02b227fd2bb6635414a0'), 'user_id': UUID('6d7edf29-8b3f-451b-8d66-984cb8dd8906')}]
 def query_inferred_sections_modes(sections):
-    mode_by_section_id = {}
-    for section in sections:
-        matching_inferred_section = esds.cleaned2inferred_section(section.get('user_id'), section.get('section'))
-        if matching_inferred_section is None:
-            mode_by_section_id[str(section.get('section'))] = ecwm.PredictedModeTypes.UNKNOWN
-        else:
-            mode_by_section_id[str(section.get('section'))] = matching_inferred_section.data.sensed_mode # PredictedModeTypes
-    return mode_by_section_id
+    return esds.cleaned2inferred_section_list(sections)
+
