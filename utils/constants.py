@@ -67,3 +67,24 @@ EXCLUDED_DEMOGRAPHICS_COLS = [
     'attrversion',
     'instanceID',
 ]
+
+EXCLUDED_TRAJECTORIES_COLS = [
+    'data.loc.type',
+    'data.loc.coordinates',
+    'data.local_dt.year',
+    'data.local_dt.month',
+    'data.local_dt.day',
+    'data.local_dt.hour',
+    'data.local_dt.minute',
+    'data.local_dt.second',
+    'data.local_dt.weekday',
+    'data.local_dt.timezone',
+    'data.local_dt_year',
+    'data.local_dt_month',
+    'data.local_dt_day',
+    'data.local_dt_hour',
+    'data.local_dt_minute',
+    'data.local_dt_second',
+    'data.local_dt_weekday',
+    'data.local_dt_timezone',
+]
