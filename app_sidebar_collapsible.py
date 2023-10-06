@@ -157,7 +157,12 @@ home_page = [
     content,
 ]
 
-def update_store_demographics():
+@app.callback(
+    Output("store-demographics", "data"),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
+)
+def update_store_demographics(start_date, end_date):
     df = query_demographics()
     records = df.to_dict("records")
     
@@ -167,15 +172,12 @@ def update_store_demographics():
     }
     return store
 
-demographics_data = update_store_demographics()
-
-
 app.layout = html.Div(
     [
         dcc.Location(id='url', refresh=False),
         dcc.Store(id='store-trips', data={}),
         dcc.Store(id='store-uuids', data={}),
-        dcc.Store(id='store-demographics', data= demographics_data),
+        dcc.Store(id='store-demographics', data= {}),
         dcc.Store(id ='store-trajectories', data = {}),   
         html.Div(id='page-content', children=home_page),
     ]
