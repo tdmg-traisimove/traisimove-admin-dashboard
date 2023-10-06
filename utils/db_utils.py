@@ -10,7 +10,7 @@ import pymongo
 import emission.core.get_database as edb
 import emission.storage.timeseries.abstract_timeseries as esta
 import emission.storage.timeseries.timequery as estt
-import emission.core.wrapper.modeprediction as ecwm
+import emission.core.wrapper.motionactivity as ecwm
 
 
 from utils import constants
@@ -18,6 +18,7 @@ from utils import permissions as perm_utils
 
 
 def query_uuids(start_date, end_date):
+    logging.debug("Querying the UUID DB for %s -> %s" % (start_date,end_date))
     query = {'update_ts': {'$exists': True}}
     if start_date is not None:
         start_time = datetime.combine(start_date, datetime.min.time()).astimezone(timezone.utc)
@@ -101,6 +102,7 @@ def query_confirmed_trips(start_date, end_date):
     return df
 
 def query_demographics():
+    logging.debug("Querying the demographics for (no date range)")
     ts = esta.TimeSeries.get_aggregate_time_series()
     
     entries = ts.find_entries(["manual/demographic_survey"])
@@ -145,7 +147,7 @@ def query_trajectories(start_date, end_date):
     for col in constants.EXCLUDED_TRAJECTORIES_COLS:
         if col in df.columns:
             df.drop(columns= [col], inplace=True) 
-    df['data.mode'] = df['data.mode'].apply(lambda x: ecwm.PredictedModeTypes(x).name if x in set(enum.value for enum in ecwm.PredictedModeTypes) else 'UNKNOWN')
+    df['data.mode_str'] = df['data.mode'].apply(lambda x: ecwm.MotionTypes(x).name if x in set(enum.value for enum in ecwm.MotionTypes) else 'UNKNOWN')
     return df
 
 
