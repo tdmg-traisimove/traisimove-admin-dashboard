@@ -10,6 +10,8 @@ import pymongo
 import emission.core.get_database as edb
 import emission.storage.timeseries.abstract_timeseries as esta
 import emission.storage.timeseries.timequery as estt
+import emission.core.wrapper.modeprediction as ecwm
+
 
 from utils import constants
 from utils import permissions as perm_utils
@@ -140,6 +142,10 @@ def query_trajectories(start_date, end_date):
     df.drop(columns= columns_to_drop, inplace=True) 
     modified_columns = perm_utils.get_trajectories_columns(df.columns)  
     df.columns = modified_columns 
+    for col in constants.EXCLUDED_TRAJECTORIES_COLS:
+        if col in df.columns:
+            df.drop(columns= [col], inplace=True) 
+    df['data.mode'] = df['data.mode'].apply(lambda x: ecwm.PredictedModeTypes(x).name if x in set(enum.value for enum in ecwm.PredictedModeTypes) else 'UNKNOWN')
     return df
 
 
