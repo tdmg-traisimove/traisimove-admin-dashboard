@@ -1,4 +1,4 @@
-FROM shankari/e-mission-server:gis-based-mode-detection_2023-09-13--30-28
+FROM shankari/e-mission-server:master_2023-10-07--40-27
 
 ENV DASH_DEBUG_MODE True
 ENV SERVER_PORT 8050
