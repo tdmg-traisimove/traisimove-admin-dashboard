@@ -140,14 +140,14 @@ def query_trajectories(start_date, end_date):
         for col in df.columns:
             if df[col].dtype == 'object':
                 df[col] = df[col].apply(str)
-    columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
-    df.drop(columns= columns_to_drop, inplace=True) 
-    modified_columns = perm_utils.get_trajectories_columns(df.columns)  
-    df.columns = modified_columns 
-    for col in constants.EXCLUDED_TRAJECTORIES_COLS:
-        if col in df.columns:
-            df.drop(columns= [col], inplace=True) 
-    df['data.mode_str'] = df['data.mode'].apply(lambda x: ecwm.MotionTypes(x).name if x in set(enum.value for enum in ecwm.MotionTypes) else 'UNKNOWN')
+        columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
+        df.drop(columns= columns_to_drop, inplace=True) 
+        modified_columns = perm_utils.get_trajectories_columns(df.columns)  
+        df.columns = modified_columns 
+        for col in constants.EXCLUDED_TRAJECTORIES_COLS:
+            if col in df.columns:
+                df.drop(columns= [col], inplace=True) 
+        df['data.mode_str'] = df['data.mode'].apply(lambda x: ecwm.MotionTypes(x).name if x in set(enum.value for enum in ecwm.MotionTypes) else 'UNKNOWN')
     return df
 
 
