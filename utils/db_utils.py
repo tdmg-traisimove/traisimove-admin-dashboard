@@ -119,6 +119,9 @@ def query_demographics():
         for col in constants.EXCLUDED_DEMOGRAPHICS_COLS:
             if col in df.columns:
                 df.drop(columns= [col], inplace=True) 
+    logging.debug("After modifying, df columns are %s" % df.columns)
+    logging.debug("The data in column is %s" %df.head(5))
+    logging.debug("The data in column is %s" %df["Which_one_below_describe_you_b"])
     return df
 
 
