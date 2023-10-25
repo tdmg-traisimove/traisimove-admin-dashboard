@@ -1,4 +1,4 @@
-FROM shankari/e-mission-server:master_2023-10-20--52-49
+FROM shankari/e-mission-server:master_2023-10-25--24-33
 
 ENV DASH_DEBUG_MODE True
 ENV SERVER_PORT 8050
