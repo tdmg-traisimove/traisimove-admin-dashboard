@@ -99,6 +99,7 @@ def get_demographic_columns(columns):
     return columns
 
 def get_trajectories_columns(columns):
+    columns = set(columns)
     for column in permissions.get("data_trajectories_columns_exclude", []):
         columns.discard(column)
     return columns
