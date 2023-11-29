@@ -10,7 +10,7 @@ must install dash-bootstrap-components >= 0.11.0.
 For more details on building multi-page Dash applications, check out the Dash documentation: https://dash.plot.ly/urls
 """
 import os
-from datetime import date
+from datetime import date, timedelta
 
 import dash
 import dash_bootstrap_components as dbc
@@ -208,8 +208,12 @@ def update_store_uuids(start_date, end_date):
     Input('date-picker', 'end_date'),
 )
 def update_store_trips(start_date, end_date):
-    start_date_obj = date.fromisoformat(start_date) if start_date else None
-    end_date_obj = date.fromisoformat(end_date) if end_date else None
+    if not start_date or not end_date:
+        end_date_obj = date.today()
+        start_date_obj = end_date_obj - timedelta(days=7)
+    else:
+        start_date_obj = date.fromisoformat(start_date) 
+        end_date_obj = date.fromisoformat(end_date)
     df = query_confirmed_trips(start_date_obj, end_date_obj)
     records = df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
