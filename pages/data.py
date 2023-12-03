@@ -4,7 +4,7 @@ Since the dcc.Location component is not in the layout when navigating to this pa
 The workaround is to check if the input value is None.
 """
 from dash import dcc, html, Input, Output, callback, register_page, dash_table
-from datetime import date
+from datetime import date, timedelta
 # Etc
 import logging
 import pandas as pd
@@ -82,8 +82,12 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
     elif tab == 'tab-trajectories-datatable':
         # Currently store_trajectories data is loaded only when the respective tab is selected
         #Here we query for trajectory data once "Trajectories" tab is selected
-        start_date_obj = date.fromisoformat(start_date) if start_date else None
-        end_date_obj = date.fromisoformat(end_date) if end_date else None
+        if not start_date or not end_date:
+            end_date_obj = date.today()
+            start_date_obj = end_date_obj - timedelta(days=7)
+        else:
+            start_date_obj = date.fromisoformat(start_date) 
+            end_date_obj = date.fromisoformat(end_date)
         if store_trajectories == {}:
             store_trajectories = update_store_trajectories(start_date_obj,end_date_obj)
         data = store_trajectories["data"]
