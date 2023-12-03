@@ -77,8 +77,23 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
         has_perm = perm_utils.has_permission('data_trips')
     elif tab == 'tab-demographics-datatable':
         data = store_demographics["data"]
-        columns = list(data[0].keys())
         has_perm = perm_utils.has_permission('data_demographics')
+        # if only one survey is available, process it without creating a subtab
+        if len(data) == 1: 
+            # here data is a dictionary 
+            data = list(data.values())[0]
+            columns = list(data[0].keys())
+        # for multiple survey, create subtabs for unique surveys
+        else:
+            #returns subtab only if has_perm is True
+            if not has_perm:
+                return None
+            return html.Div([
+                dcc.Tabs(id='subtabs-demographics', value=list(data.keys())[0], children=[
+                    dcc.Tab(label= key, value= key) for key in data
+            ]),  
+                html.Div(id='subtabs-demographics-content')
+            ]) 
     elif tab == 'tab-trajectories-datatable':
         # Currently store_trajectories data is loaded only when the respective tab is selected
         #Here we query for trajectory data once "Trajectories" tab is selected
@@ -105,7 +120,28 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
 
     return populate_datatable(df)
 
+# handle subtabs for demographic table when there are multiple surveys
+@callback(
+    Output('subtabs-demographics-content', 'children'),
+    Input('subtabs-demographics', 'value'),
+    Input('store-demographics', 'data'),
+)
 
+def update_sub_tab(tab, store_demographics):
+    data = store_demographics["data"]
+    if tab in data:
+        data = data[tab]
+        if data:
+            columns = list(data[0].keys())
+
+        df = pd.DataFrame(data)
+        if df.empty:
+            return None
+
+        df = df.drop(columns=[col for col in df.columns if col not in columns])
+
+        return populate_datatable(df)
+      
 def populate_datatable(df):
     if not isinstance(df, pd.DataFrame):
         raise PreventUpdate
