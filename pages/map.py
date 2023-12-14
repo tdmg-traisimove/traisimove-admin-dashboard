@@ -154,9 +154,8 @@ def get_trips_group_by_user_id(trips_data):
 def get_trips_group_by_user_mode(trips_data):
     trips_group_by_user_mode = None
     trips_df = pd.DataFrame(trips_data['data'])
-    data_types = trips_df.dtypes
-    trips_df['data.user_input.mode_confirm'] = trips_df['data.user_input.mode_confirm'].fillna('Unknown')
     if not trips_df.empty:
+        trips_df['data.user_input.mode_confirm'] = trips_df['data.user_input.mode_confirm'].fillna('Unknown')
         trips_group_by_user_mode = trips_df.groupby('data.user_input.mode_confirm')
     return trips_group_by_user_mode
 
