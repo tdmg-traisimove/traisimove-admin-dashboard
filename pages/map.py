@@ -322,11 +322,14 @@ def update_output(map_type, selected_user_ids, selected_user_emails, selected_us
     Output('user-id-dropdown', 'disabled'),
     Output('user-email-dropdown', 'disabled'),
     Input('map-type-dropdown', 'value'),
+    Input('user-mode-dropdown', 'value'),
 )
-def control_user_dropdowns(map_type):
+def control_user_dropdowns(map_type,selected_user_modes):
     disabled = True
     if map_type == 'lines':
         disabled = False
+        if selected_user_modes:
+            disabled = True
     return disabled, disabled
 
 
