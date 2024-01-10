@@ -57,7 +57,7 @@ def create_lines_map(trips_group_by_user_id, user_id_list):
     return fig
 
 
-def create_heatmap_fig(trips_group_by_user_mode, user_mode_list):
+def get_map_coordinates(trips_group_by_user_mode, user_mode_list):
     coordinates = {'lat': [], 'lon': [], 'color':[]}
     for user_mode in user_mode_list:
         color = trips_group_by_user_mode[user_mode]['color']
@@ -69,7 +69,11 @@ def create_heatmap_fig(trips_group_by_user_mode, user_mode_list):
             coordinates['lat'].append(trip['start_coordinates'][1])
             coordinates['lat'].append(trip['end_coordinates'][1])
             coordinates['color'].extend([color,color])
+    return coordinates
 
+
+def create_heatmap_fig(trips_group_by_user_mode, user_mode_list):
+    coordinates = get_map_coordinates(trips_group_by_user_mode, user_mode_list)
     fig = go.Figure()
     if len(coordinates.get('lat', [])) > 0:
         fig.add_trace(
@@ -106,18 +110,7 @@ def create_heatmap_fig(trips_group_by_user_mode, user_mode_list):
 
 
 def create_bubble_fig(trips_group_by_user_mode, user_mode_list):
-    coordinates = {'lat': [], 'lon': [], 'color': []}
-    for user_mode in user_mode_list:
-        color = trips_group_by_user_mode[user_mode]['color']
-        trips = trips_group_by_user_mode[user_mode]['trips']
-
-        for trip in trips:
-            coordinates['lon'].append(trip['start_coordinates'][0])
-            coordinates['lon'].append(trip['end_coordinates'][0])
-            coordinates['lat'].append(trip['start_coordinates'][1])
-            coordinates['lat'].append(trip['end_coordinates'][1])
-            coordinates['color'].extend([color,color])
-
+    coordinates = get_map_coordinates(trips_group_by_user_mode, user_mode_list)
     fig = go.Figure()
     if len(coordinates.get('lon', [])) > 0:
         fig.add_trace(
@@ -259,7 +252,7 @@ layout = html.Div(
     Input('user-id-dropdown', 'value'),
 )
 def update_user_ids_options(trips_data, selected_user_ids):
-    user_ids_options, user_ids = create_user_ids_options(trips_data[0]['users_data'])
+    user_ids_options, user_ids = create_user_ids_options(trips_data['users_data_by_user_id'])
     if selected_user_ids is not None:
         selected_user_ids = [user_id for user_id in selected_user_ids if user_id in user_ids]
     return user_ids_options, selected_user_ids
@@ -272,7 +265,7 @@ def update_user_ids_options(trips_data, selected_user_ids):
     Input('user-email-dropdown', 'value'),
 )
 def update_user_emails_options(trips_data, selected_user_emails):
-    user_emails_options, user_emails = create_user_emails_options(trips_data[0]['users_data'])
+    user_emails_options, user_emails = create_user_emails_options(trips_data['users_data_by_user_id'])
     if selected_user_emails is not None:
         selected_user_emails = [user_email for user_email in selected_user_emails if user_email in user_emails]
     return user_emails_options, selected_user_emails
@@ -284,7 +277,7 @@ def update_user_emails_options(trips_data, selected_user_emails):
     Input('user-mode-dropdown', 'value'),
 )
 def update_user_modes_options(trips_data, selected_user_modes):
-    user_modes_options, user_modes = create_user_modes_options(trips_data[1]['users_data'])
+    user_modes_options, user_modes = create_user_modes_options(trips_data['users_data_by_user_mode'])
     if selected_user_modes is not None:
         selected_user_modes = [mode_confirm for mode_confirm in selected_user_modes if mode_confirm in user_modes]
     return user_modes_options, selected_user_modes
@@ -303,17 +296,14 @@ def update_output(map_type, selected_user_ids, selected_user_emails, selected_us
     if selected_user_emails is not None:
         for user_email in selected_user_emails:
             user_ids.add(str(ecwu.User.fromEmail(user_email).uuid))
-    arg1 = trips_data[0].get('users_data', {})
-    arg2 = user_ids       
-    if(selected_user_modes):
-        arg1 = trips_data[1].get('users_data', {})
-        arg2 = user_modes
     if map_type == 'lines':
-        return create_lines_map(arg1, arg2)
+        if selected_user_modes:
+            return create_lines_map(trips_data.get('users_data_by_user_mode', {}), user_modes)
+        return create_lines_map(trips_data.get('users_data_by_user_id', {}), user_ids)
     elif map_type == 'heatmap':
-        return create_heatmap_fig(trips_data[1].get('users_data', {}), user_modes)
+        return create_heatmap_fig(trips_data.get('users_data_by_user_mode', {}), user_modes)
     elif map_type == 'bubble':
-        return create_bubble_fig(trips_data[1].get('users_data', {}), user_modes)
+        return create_bubble_fig(trips_data.get('users_data_by_user_mode', {}), user_modes)
     else:
         return go.Figure()
 
@@ -333,32 +323,28 @@ def control_user_dropdowns(map_type,selected_user_modes):
     return disabled, disabled
 
 
+def process_trips_group(trips_group):
+    users_data = dict()
+    if trips_group:
+        keys = list(trips_group)
+        n = len(keys) % 360
+        k = 359 // (n - 1) if n > 1 else 0
+        for ind, key in enumerate(trips_group.groups.keys()):
+            color = f'hsl({ind * k}, 100%, 50%)'
+            trips = trips_group.get_group(key).sort_values('trip_start_time_str').to_dict("records")
+            users_data[key] = {'color': color, 'trips': trips}  
+    return users_data
+
+
 @callback(
     Output('store-trips-map', 'data'),
     Input('store-trips', 'data'),
 )
 def store_trips_map_data(trips_data):
     trips_group_by_user_id = get_trips_group_by_user_id(trips_data)
-    users_data = dict()
-    if trips_group_by_user_id:
-        user_ids = list(trips_group_by_user_id)
-        n = len(user_ids) % 360
-        k = 359 // (n - 1) if n > 1 else 0
-        for ind, user_id in enumerate(trips_group_by_user_id.groups.keys()):
-            color = f'hsl({ind * k}, 100%, 50%)'
-            trips = trips_group_by_user_id.get_group(user_id).sort_values('trip_start_time_str').to_dict("records")
-            users_data[user_id] = {'color': color, 'trips': trips}
-    groupped_data = []
-    groupped_data.append({'users_data':users_data})
-    users_data = dict()
+    users_data_by_user_id = process_trips_group(trips_group_by_user_id)
+  
     trips_group_by_user_mode = get_trips_group_by_user_mode(trips_data)
-    if trips_group_by_user_mode:
-        user_modes = list(trips_group_by_user_mode)
-        n = len(user_modes) % 360
-        k = 359 // (n - 1) if n > 1 else 0
-        for ind, user_mode in enumerate(trips_group_by_user_mode.groups.keys()):
-            color = f'hsl({ind * k}, 100%, 50%)'
-            trips = trips_group_by_user_mode.get_group(user_mode).sort_values('trip_start_time_str').to_dict("records")
-            users_data[user_mode] = {'color': color, 'trips': trips}
-    groupped_data.append({'users_data':users_data})
-    return groupped_data
+    users_data_by_user_mode = process_trips_group(trips_group_by_user_mode)
+    
+    return {'users_data_by_user_id':users_data_by_user_id, 'users_data_by_user_mode':users_data_by_user_mode}
