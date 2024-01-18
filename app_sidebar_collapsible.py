@@ -131,8 +131,8 @@ content = html.Div([
         dcc.DatePickerRange(
             id='date-picker',
             display_format='D/M/Y',
-            start_date_placeholder_text='D/M/Y',
-            end_date_placeholder_text='D/M/Y',
+            start_date=date.today() - timedelta(days=7),
+            end_date=date.today(),
             min_date_allowed=date(2010, 1, 1),
             max_date_allowed=date.today(),
             initial_visible_month=date.today(),
@@ -209,12 +209,8 @@ def update_store_uuids(start_date, end_date):
     Input('date-picker', 'end_date'),
 )
 def update_store_trips(start_date, end_date):
-    if not start_date or not end_date:
-        end_date_obj = date.today()
-        start_date_obj = end_date_obj - timedelta(days=7)
-    else:
-        start_date_obj = date.fromisoformat(start_date) 
-        end_date_obj = date.fromisoformat(end_date)
+    start_date_obj = date.fromisoformat(start_date)
+    end_date_obj = date.fromisoformat(end_date)
     df = query_confirmed_trips(start_date_obj, end_date_obj)
     records = df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
