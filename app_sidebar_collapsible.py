@@ -130,7 +130,7 @@ content = html.Div([
     html.Div(
         dcc.DatePickerRange(
             id='date-picker',
-            display_format='D/M/Y',
+            display_format='D MMM Y',
             start_date=date.today() - timedelta(days=7),
             end_date=date.today(),
             min_date_allowed=date(2010, 1, 1),
