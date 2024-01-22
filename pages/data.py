@@ -4,7 +4,6 @@ Since the dcc.Location component is not in the layout when navigating to this pa
 The workaround is to check if the input value is None.
 """
 from dash import dcc, html, Input, Output, callback, register_page, dash_table
-from datetime import date, timedelta
 # Etc
 import logging
 import pandas as pd
@@ -38,10 +37,10 @@ def clean_location_data(df):
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
 
-def update_store_trajectories(start_date_obj,end_date_obj):
+def update_store_trajectories(start_date: str, end_date: str):
     global store_trajectories
-    df = query_trajectories(start_date_obj,end_date_obj)
-    records = df.to_dict("records")   
+    df = query_trajectories(start_date, end_date)
+    records = df.to_dict("records")
     store = {
         "data": records,
         "length": len(records),
@@ -97,10 +96,9 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
     elif tab == 'tab-trajectories-datatable':
         # Currently store_trajectories data is loaded only when the respective tab is selected
         #Here we query for trajectory data once "Trajectories" tab is selected
-        start_date_obj = date.fromisoformat(start_date)
-        end_date_obj = date.fromisoformat(end_date)
+        start_date, end_date = start_date[:10], end_date[:10] # dates as YYYY-MM-DD
         if store_trajectories == {}:
-            store_trajectories = update_store_trajectories(start_date_obj,end_date_obj)
+            store_trajectories = update_store_trajectories(start_date, end_date)
         data = store_trajectories["data"]
         if data:
             columns = list(data[0].keys())

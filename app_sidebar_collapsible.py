@@ -10,7 +10,7 @@ must install dash-bootstrap-components >= 0.11.0.
 For more details on building multi-page Dash applications, check out the Dash documentation: https://dash.plot.ly/urls
 """
 import os
-from datetime import date, timedelta
+import arrow
 
 import dash
 import dash_bootstrap_components as dbc
@@ -124,6 +124,10 @@ sidebar = html.Div(
     className="sidebar",
 )
 
+# according to docs, DatePickerRange will accept YYYY-MM-DD format
+today_date = arrow.now().format('YYYY-MM-DD')
+last_week_date = arrow.now().shift(days=-7).format('YYYY-MM-DD')
+tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
 
 content = html.Div([
     # Global Date Picker
@@ -131,11 +135,11 @@ content = html.Div([
         dcc.DatePickerRange(
             id='date-picker',
             display_format='D MMM Y',
-            start_date=date.today() - timedelta(days=7),
-            end_date=date.today(),
-            min_date_allowed=date(2010, 1, 1),
-            max_date_allowed=date.today(),
-            initial_visible_month=date.today(),
+            start_date=last_week_date,
+            end_date=today_date,
+            min_date_allowed='2010-1-1',
+            max_date_allowed=tomorrow_date,
+            initial_visible_month=today_date,
         ), style={'margin': '10px 10px 0 0', 'display': 'flex', 'justify-content': 'right'}
     ),
 
@@ -188,13 +192,14 @@ app.layout = html.Div(
 # Load data stores
 @app.callback(
     Output("store-uuids", "data"),
-    Input('date-picker', 'start_date'),
-    Input('date-picker', 'end_date'),
+    Input('date-picker', 'start_date'), # these are ISO strings
+    Input('date-picker', 'end_date'), # these are ISO strings
 )
 def update_store_uuids(start_date, end_date):
-    start_date_obj = date.fromisoformat(start_date) if start_date else None
-    end_date_obj = date.fromisoformat(end_date) if end_date else None
-    dff = query_uuids(start_date_obj, end_date_obj)
+    # trim the time part, leaving only date as YYYY-MM-DD
+    start_date = start_date[:10] if start_date else None
+    end_date = end_date[:10] if end_date else None
+    dff = query_uuids(start_date, end_date)
     records = dff.to_dict("records")
     store = {
         "data": records,
@@ -209,9 +214,10 @@ def update_store_uuids(start_date, end_date):
     Input('date-picker', 'end_date'),
 )
 def update_store_trips(start_date, end_date):
-    start_date_obj = date.fromisoformat(start_date)
-    end_date_obj = date.fromisoformat(end_date)
-    df = query_confirmed_trips(start_date_obj, end_date_obj)
+    # trim the time part, leaving only date as YYYY-MM-DD
+    start_date = start_date[:10] if start_date else None
+    end_date = end_date[:10] if end_date else None
+    df = query_confirmed_trips(start_date, end_date)
     records = df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
     store = {

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+import arrow
 from uuid import UUID
 
 import arrow
@@ -16,16 +16,19 @@ import emission.core.wrapper.motionactivity as ecwm
 from utils import constants
 from utils import permissions as perm_utils
 
+MAX_EPOCH_TIME = 2 ** 31 - 1
 
-def query_uuids(start_date, end_date):
+def query_uuids(start_date: str, end_date: str):
     logging.debug("Querying the UUID DB for %s -> %s" % (start_date,end_date))
     query = {'update_ts': {'$exists': True}}
     if start_date is not None:
-        start_time = datetime.combine(start_date, datetime.min.time()).astimezone(timezone.utc)
+        # have arrow create a datetime using start_date and time 00:00:00 in UTC
+        start_time = arrow.get(start_date).datetime
         query['update_ts']['$gte'] = start_time
 
     if end_date is not None:
-        end_time = datetime.combine(end_date, datetime.max.time()).astimezone(timezone.utc)
+        # have arrow create a datetime using end_date and time 23:59:59 in UTC
+        end_time = arrow.get(end_date).replace(hour=23, minute=59, second=59).datetime
         query['update_ts']['$lt'] = end_time
 
     projection = {
@@ -49,13 +52,12 @@ def query_uuids(start_date, end_date):
         df.drop(columns=["uuid", "_id"], inplace=True)
     return df
 
-def query_confirmed_trips(start_date, end_date):
-    start_ts, end_ts = None, datetime.max.timestamp()
+def query_confirmed_trips(start_date: str, end_date: str):
+    start_ts, end_ts = None, MAX_EPOCH_TIME
     if start_date is not None:
-        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
-
+        start_ts = arrow.get(start_date).timestamp()
     if end_date is not None:
-        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
+        end_ts = arrow.get(end_date).replace(hour=23, minute=59, second=59).timestamp()
 
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
@@ -137,15 +139,14 @@ def query_demographics():
                     
     return dataframes
 
-def query_trajectories(start_date, end_date):
-    start_ts, end_ts = None, datetime.max.timestamp()
+def query_trajectories(start_date: str, end_date: str):
+    start_ts, end_ts = None, MAX_EPOCH_TIME
     if start_date is not None:
-        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
-
+      start_ts = arrow.get(start_date).timestamp()
     if end_date is not None:
-        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
+      end_ts = arrow.get(end_date).replace(hour=23, minute=59, second=59).timestamp()
+
     ts = esta.TimeSeries.get_aggregate_time_series()
-   
     entries = ts.find_entries(
         key_list=["analysis/recreated_location"],
         time_query=estt.TimeQuery("data.ts", start_ts, end_ts),
