@@ -72,8 +72,7 @@ def get_map_coordinates(trips_group_by_user_mode, user_mode_list):
     return coordinates
 
 
-def create_heatmap_fig(trips_group_by_user_mode, user_mode_list):
-    coordinates = get_map_coordinates(trips_group_by_user_mode, user_mode_list)
+def create_heatmap_fig(coordinates):
     fig = go.Figure()
     if len(coordinates.get('lat', [])) > 0:
         fig.add_trace(
@@ -109,8 +108,7 @@ def create_heatmap_fig(trips_group_by_user_mode, user_mode_list):
     return fig
 
 
-def create_bubble_fig(trips_group_by_user_mode, user_mode_list):
-    coordinates = get_map_coordinates(trips_group_by_user_mode, user_mode_list)
+def create_bubble_fig(coordinates):
     fig = go.Figure()
     if len(coordinates.get('lon', [])) > 0:
         fig.add_trace(
@@ -293,6 +291,7 @@ def update_user_modes_options(trips_data, selected_user_modes):
 def update_output(map_type, selected_user_ids, selected_user_emails, selected_user_modes, trips_data):
     user_ids = set(selected_user_ids) if selected_user_ids is not None else set()
     user_modes=set(selected_user_modes) if selected_user_modes is not None else set()
+    coordinates = get_map_coordinates(trips_data.get('users_data_by_user_mode', {}), user_modes)
     if selected_user_emails is not None:
         for user_email in selected_user_emails:
             user_ids.add(str(ecwu.User.fromEmail(user_email).uuid))
@@ -301,9 +300,9 @@ def update_output(map_type, selected_user_ids, selected_user_emails, selected_us
             return create_lines_map(trips_data.get('users_data_by_user_mode', {}), user_modes)
         return create_lines_map(trips_data.get('users_data_by_user_id', {}), user_ids)
     elif map_type == 'heatmap':
-        return create_heatmap_fig(trips_data.get('users_data_by_user_mode', {}), user_modes)
+        return create_heatmap_fig(coordinates)
     elif map_type == 'bubble':
-        return create_bubble_fig(trips_data.get('users_data_by_user_mode', {}), user_modes)
+        return create_bubble_fig(coordinates)
     else:
         return go.Figure()
 
