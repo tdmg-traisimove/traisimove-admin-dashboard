@@ -325,13 +325,14 @@ def control_user_dropdowns(map_type,selected_user_modes):
 
 def process_trips_group(trips_group):
     users_data = dict()
+    #processes a group of trips, assigns color to each group and stores the processed data in a dictionary
     if trips_group:
         keys = list(trips_group)
         n = len(keys) % 360
         k = 359 // (n - 1) if n > 1 else 0
         for ind, key in enumerate(trips_group.groups.keys()):
             color = f'hsl({ind * k}, 100%, 50%)'
-            trips = trips_group.get_group(key).sort_values('trip_start_time_str').to_dict("records")
+            trips = trips_group.get_group(key).to_dict("records")
             users_data[key] = {'color': color, 'trips': trips}  
     return users_data
 
