@@ -37,9 +37,9 @@ def clean_location_data(df):
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
 
-def update_store_trajectories(start_date: str, end_date: str):
+def update_store_trajectories(start_date: str, end_date: str, tz: str):
     global store_trajectories
-    df = query_trajectories(start_date, end_date)
+    df = query_trajectories(start_date, end_date, tz)
     records = df.to_dict("records")
     store = {
         "data": records,
@@ -58,9 +58,9 @@ def update_store_trajectories(start_date: str, end_date: str):
     Input('store-trajectories', 'data'),
     Input('date-picker', 'start_date'),
     Input('date-picker', 'end_date'),
-
+    Input('date-picker-timezone', 'value'),
 )
-def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date):
+def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date, timezone):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
@@ -98,7 +98,7 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
         #Here we query for trajectory data once "Trajectories" tab is selected
         start_date, end_date = start_date[:10], end_date[:10] # dates as YYYY-MM-DD
         if store_trajectories == {}:
-            store_trajectories = update_store_trajectories(start_date, end_date)
+            store_trajectories = update_store_trajectories(start_date, end_date, timezone)
         data = store_trajectories["data"]
         if data:
             columns = list(data[0].keys())

@@ -131,7 +131,7 @@ tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
 
 content = html.Div([
     # Global Date Picker
-    html.Div(
+    html.Div([
         dcc.DatePickerRange(
             id='date-picker',
             display_format='D MMM Y',
@@ -140,7 +140,33 @@ content = html.Div([
             min_date_allowed='2010-1-1',
             max_date_allowed=tomorrow_date,
             initial_visible_month=today_date,
-        ), style={'margin': '10px 10px 0 0', 'display': 'flex', 'justify-content': 'right'}
+        ),
+        html.Div([
+            html.Span('Query trips using: ', style={'margin-right': '10px'}),
+            dcc.Dropdown(
+                id='date-picker-timezone',
+                options=[
+                    {'label': 'UTC Time', 'value': 'utc'},
+                    {'label': 'My Local Timezone', 'value': 'local'},
+                    # {'label': 'Local Timezone of Trips', 'value': 'trips'},
+                ],
+                value='utc',
+                clearable=False,
+                searchable=False,
+                style={'width': '220px'},
+            ),
+        ],
+            style={'margin': '10px 10px 0 0',
+                   'display': 'flex',
+                   'justify-content': 'right',
+                   'align-items': 'center'},
+
+        ),
+    ],
+        style={'margin': '10px 10px 0 0',
+               'display': 'flex',
+               'flex-direction': 'column',
+               'align-items': 'end'}
     ),
 
     # Pages Content
@@ -165,8 +191,9 @@ home_page = [
     Output("store-demographics", "data"),
     Input('date-picker', 'start_date'),
     Input('date-picker', 'end_date'),
+    Input('date-picker-timezone', 'value'),
 )
-def update_store_demographics(start_date, end_date):
+def update_store_demographics(start_date, end_date, timezone):
     df = query_demographics()
     records = {}
     for key, dataframe in df.items():
@@ -192,14 +219,15 @@ app.layout = html.Div(
 # Load data stores
 @app.callback(
     Output("store-uuids", "data"),
-    Input('date-picker', 'start_date'), # these are ISO strings
-    Input('date-picker', 'end_date'), # these are ISO strings
+    Input('date-picker', 'start_date'),  # these are ISO strings
+    Input('date-picker', 'end_date'),  # these are ISO strings
+    Input('date-picker-timezone', 'value'),
 )
-def update_store_uuids(start_date, end_date):
+def update_store_uuids(start_date, end_date, timezone):
     # trim the time part, leaving only date as YYYY-MM-DD
     start_date = start_date[:10] if start_date else None
     end_date = end_date[:10] if end_date else None
-    dff = query_uuids(start_date, end_date)
+    dff = query_uuids(start_date, end_date, timezone)
     records = dff.to_dict("records")
     store = {
         "data": records,
@@ -212,12 +240,13 @@ def update_store_uuids(start_date, end_date):
     Output("store-trips", "data"),
     Input('date-picker', 'start_date'),
     Input('date-picker', 'end_date'),
+    Input('date-picker-timezone', 'value'),
 )
-def update_store_trips(start_date, end_date):
+def update_store_trips(start_date, end_date, timezone):
     # trim the time part, leaving only date as YYYY-MM-DD
     start_date = start_date[:10] if start_date else None
     end_date = end_date[:10] if end_date else None
-    df = query_confirmed_trips(start_date, end_date)
+    df = query_confirmed_trips(start_date, end_date, timezone)
     records = df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
     store = {

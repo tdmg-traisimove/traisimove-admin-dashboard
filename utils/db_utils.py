@@ -18,7 +18,7 @@ from utils import permissions as perm_utils
 
 MAX_EPOCH_TIME = 2 ** 31 - 1
 
-def query_uuids(start_date: str, end_date: str):
+def query_uuids(start_date: str, end_date: str, tz: str):
     logging.debug("Querying the UUID DB for %s -> %s" % (start_date,end_date))
     query = {'update_ts': {'$exists': True}}
     if start_date is not None:
@@ -52,12 +52,20 @@ def query_uuids(start_date: str, end_date: str):
         df.drop(columns=["uuid", "_id"], inplace=True)
     return df
 
-def query_confirmed_trips(start_date: str, end_date: str):
+def query_confirmed_trips(start_date: str, end_date: str, tz: str):
     start_ts, end_ts = None, MAX_EPOCH_TIME
     if start_date is not None:
-        start_ts = arrow.get(start_date).timestamp()
+        if tz == 'utc':
+            start_ts = arrow.get(start_date).timestamp()
+        elif tz == 'local':
+            start_ts = arrow.get(start_date, tzinfo='local').timestamp()
     if end_date is not None:
-        end_ts = arrow.get(end_date).replace(hour=23, minute=59, second=59).timestamp()
+        if tz == 'utc':
+            end_ts = arrow.get(end_date).replace(
+                hour=23, minute=59, second=59).timestamp()
+        elif tz == 'local':
+            end_ts = arrow.get(end_date, tzinfo='local').replace(
+                hour=23, minute=59, second=59).timestamp()
 
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
@@ -139,12 +147,20 @@ def query_demographics():
                     
     return dataframes
 
-def query_trajectories(start_date: str, end_date: str):
+def query_trajectories(start_date: str, end_date: str, tz: str):
     start_ts, end_ts = None, MAX_EPOCH_TIME
     if start_date is not None:
-      start_ts = arrow.get(start_date).timestamp()
+        if tz == 'utc':
+            start_ts = arrow.get(start_date).timestamp()
+        elif tz == 'local':
+            start_ts = arrow.get(start_date, tzinfo='local').timestamp()
     if end_date is not None:
-      end_ts = arrow.get(end_date).replace(hour=23, minute=59, second=59).timestamp()
+        if tz == 'utc':
+            end_ts = arrow.get(end_date).replace(
+                hour=23, minute=59, second=59).timestamp()
+        elif tz == 'local':
+            end_ts = arrow.get(end_date, tzinfo='local').replace(
+                hour=23, minute=59, second=59).timestamp()
 
     ts = esta.TimeSeries.get_aggregate_time_series()
     entries = ts.find_entries(
