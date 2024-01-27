@@ -39,24 +39,27 @@ def get_ts_range(start_date: str, end_date: str, tz: str):
     return (start_ts, end_ts)
 
 def query_uuids(start_date: str, end_date: str, tz: str):
-    logging.debug("Querying the UUID DB for %s -> %s" % (start_date,end_date))
-    query = {'update_ts': {'$exists': True}}
-    if start_date is not None:
-        # have arrow create a datetime using start_date and time 00:00:00 in UTC
-        start_time = arrow.get(start_date).datetime
-        query['update_ts']['$gte'] = start_time
+    # As of now, time filtering does not apply to UUIDs; we just query all of them.
+    # Vestigial code commented out and left below for future reference
 
-    if end_date is not None:
-        # have arrow create a datetime using end_date and time 23:59:59 in UTC
-        end_time = arrow.get(end_date).replace(hour=23, minute=59, second=59).datetime
-        query['update_ts']['$lt'] = end_time
+    # logging.debug("Querying the UUID DB for %s -> %s" % (start_date,end_date))
+    # query = {'update_ts': {'$exists': True}}
+    # if start_date is not None:
+    #     # have arrow create a datetime using start_date and time 00:00:00 in UTC
+    #     start_time = arrow.get(start_date).datetime
+    #     query['update_ts']['$gte'] = start_time
+    # if end_date is not None:
+    #     # have arrow create a datetime using end_date and time 23:59:59 in UTC
+    #     end_time = arrow.get(end_date).replace(hour=23, minute=59, second=59).datetime
+    #     query['update_ts']['$lt'] = end_time
+    # projection = {
+    #     '_id': 0,
+    #     'user_id': '$uuid',
+    #     'user_token': '$user_email',
+    #     'update_ts': 1
+    # }
 
-    projection = {
-        '_id': 0,
-        'user_id': '$uuid',
-        'user_token': '$user_email',
-        'update_ts': 1
-    }
+    logging.debug("Querying the UUID DB for (no date range)")
 
     # This should actually use the profile DB instead of (or in addition to)
     # the UUID DB so that we can see the app version, os, manufacturer...
