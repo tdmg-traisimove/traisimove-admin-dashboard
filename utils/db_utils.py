@@ -31,11 +31,9 @@ def get_ts_range(start_date: str, end_date: str, tz: str):
             start_ts = arrow.get(start_date, tzinfo='local').timestamp()
     if end_date is not None:
         if tz == 'utc':
-            end_ts = arrow.get(end_date).replace(
-                hour=23, minute=59, second=59).timestamp()
+            end_ts = arrow.get(end_date).replace(hour=23, minute=59, second=59).timestamp()
         elif tz == 'local':
-            end_ts = arrow.get(end_date, tzinfo='local').replace(
-                hour=23, minute=59, second=59).timestamp()
+            end_ts = arrow.get(end_date, tzinfo='local').replace(hour=23, minute=59, second=59).timestamp()
     return (start_ts, end_ts)
 
 def query_uuids(start_date: str, end_date: str, tz: str):
