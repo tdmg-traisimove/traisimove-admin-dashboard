@@ -160,7 +160,13 @@ content = html.Div([
                    'display': 'flex',
                    'justify-content': 'right',
                    'align-items': 'center'},
-
+        ),
+        dcc.Checklist(
+            id='global-filters',
+            options=[
+                {'label': 'Exclude "test" users', 'value': 'exclude-test-users'},
+            ],
+            value=['exclude-test-users'],
         ),
     ],
         style={'margin': '10px 10px 0 0',
@@ -192,12 +198,17 @@ home_page = [
     Input('date-picker', 'start_date'),
     Input('date-picker', 'end_date'),
     Input('date-picker-timezone', 'value'),
+    Input('store-excluded-uuids', 'data'),
 )
-def update_store_demographics(start_date, end_date, timezone):
-    df = query_demographics()
+def update_store_demographics(start_date, end_date, timezone, excluded_uuids):
+    dataframes = query_demographics()
     records = {}
-    for key, dataframe in df.items():
-        records[key] = dataframe.to_dict("records")
+    for key, df in dataframes.items():
+        if df.empty:
+            records[key] = []
+        else:
+            non_excluded_df = df[~df['user_id'].isin(excluded_uuids["data"])] # filter excluded UUIDs
+            records[key] = non_excluded_df.to_dict("records")
     store = {
         "data": records,
         "length": len(records),
@@ -209,6 +220,7 @@ app.layout = html.Div(
         dcc.Location(id='url', refresh=False),
         dcc.Store(id='store-trips', data={}),
         dcc.Store(id='store-uuids', data={}),
+        dcc.Store(id='store-excluded-uuids', data={}), # if 'test' users are excluded, a list of their uuids
         dcc.Store(id='store-demographics', data= {}),
         dcc.Store(id ='store-trajectories', data = {}),   
         html.Div(id='page-content', children=home_page),
@@ -219,21 +231,39 @@ app.layout = html.Div(
 # Load data stores
 @app.callback(
     Output("store-uuids", "data"),
+    Output("store-excluded-uuids", "data"),
     Input('date-picker', 'start_date'),  # these are ISO strings
     Input('date-picker', 'end_date'),  # these are ISO strings
     Input('date-picker-timezone', 'value'),
+    Input('global-filters', 'value'),
 )
-def update_store_uuids(start_date, end_date, timezone):
+def update_store_uuids(start_date, end_date, timezone, filters):
     # trim the time part, leaving only date as YYYY-MM-DD
     start_date = start_date[:10] if start_date else None
     end_date = end_date[:10] if end_date else None
     dff = query_uuids(start_date, end_date, timezone)
-    records = dff.to_dict("records")
-    store = {
+    if dff.empty: return {"data": [], "length": 0}, {"data": [], "length": 0}
+
+    # if 'exclude-testusers' filter is active,
+    # exclude any rows with user_token containing 'test', and
+    # output a list of those excluded UUIDs so other callbacks can exclude them too
+    if 'exclude-test-users' in filters:
+      excluded_uuids_list = dff[dff['user_token'].str.contains('test')]['user_id'].tolist()
+      non_excluded_dff = dff[~dff['user_id'].isin(excluded_uuids_list)]
+      records = non_excluded_dff.to_dict("records")
+    else:
+      excluded_uuids_list = []
+      records = dff.to_dict("records")
+
+    store_uuids = {
         "data": records,
         "length": len(records),
     }
-    return store
+    store_excluded_uuids = {
+        "data": excluded_uuids_list,
+        "length": len(excluded_uuids_list),
+    }
+    return store_uuids, store_excluded_uuids
 
 
 @app.callback(
@@ -241,13 +271,17 @@ def update_store_uuids(start_date, end_date, timezone):
     Input('date-picker', 'start_date'),
     Input('date-picker', 'end_date'),
     Input('date-picker-timezone', 'value'),
+    Input('store-excluded-uuids', 'data'),
 )
-def update_store_trips(start_date, end_date, timezone):
+def update_store_trips(start_date, end_date, timezone, excluded_uuids):
     # trim the time part, leaving only date as YYYY-MM-DD
     start_date = start_date[:10] if start_date else None
     end_date = end_date[:10] if end_date else None
     df = query_confirmed_trips(start_date, end_date, timezone)
-    records = df.to_dict("records")
+    if df.empty: return {"data": [], "length": 0}
+
+    non_excluded_df = df[~df['user_id'].isin(excluded_uuids["data"])] # filter excluded UUIDs
+    records = non_excluded_df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
     store = {
         "data": records,

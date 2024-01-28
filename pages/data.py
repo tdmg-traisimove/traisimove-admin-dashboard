@@ -37,10 +37,12 @@ def clean_location_data(df):
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
 
-def update_store_trajectories(start_date: str, end_date: str, tz: str):
+def update_store_trajectories(start_date: str, end_date: str, tz: str, excluded_uuids: list):
     global store_trajectories
     df = query_trajectories(start_date, end_date, tz)
-    records = df.to_dict("records")
+    if df.empty: return {"data": [], "length": 0}
+    non_excluded_df = df[~df['user_id'].isin(excluded_uuids["data"])] # filter excluded UUIDs
+    records = non_excluded_df.to_dict("records")
     store = {
         "data": records,
         "length": len(records),
@@ -53,6 +55,7 @@ def update_store_trajectories(start_date: str, end_date: str, tz: str):
     Output('tabs-content', 'children'),
     Input('tabs-datatable', 'value'),
     Input('store-uuids', 'data'),
+    Input('store-excluded-uuids', 'data'),
     Input('store-trips', 'data'),
     Input('store-demographics', 'data'),
     Input('store-trajectories', 'data'),
@@ -60,7 +63,7 @@ def update_store_trajectories(start_date: str, end_date: str, tz: str):
     Input('date-picker', 'end_date'),
     Input('date-picker-timezone', 'value'),
 )
-def render_content(tab, store_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date, timezone):
+def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date, timezone):
     data, columns, has_perm = None, [], False
     if tab == 'tab-uuids-datatable':
         data = store_uuids["data"]
@@ -83,7 +86,7 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
             data = list(data.values())[0]
             columns = list(data[0].keys())
         # for multiple survey, create subtabs for unique surveys
-        else:
+        elif len(data) > 1:
             #returns subtab only if has_perm is True
             if not has_perm:
                 return None
@@ -98,7 +101,7 @@ def render_content(tab, store_uuids, store_trips, store_demographics, store_traj
         #Here we query for trajectory data once "Trajectories" tab is selected
         start_date, end_date = start_date[:10], end_date[:10] # dates as YYYY-MM-DD
         if store_trajectories == {}:
-            store_trajectories = update_store_trajectories(start_date, end_date, timezone)
+            store_trajectories = update_store_trajectories(start_date, end_date, timezone, store_excluded_uuids)
         data = store_trajectories["data"]
         if data:
             columns = list(data[0].keys())
