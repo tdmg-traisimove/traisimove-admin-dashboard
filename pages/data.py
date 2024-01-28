@@ -11,7 +11,7 @@ from dash.exceptions import PreventUpdate
 
 from utils import permissions as perm_utils
 from utils import db_utils
-from utils.db_utils import query_trajectories
+from utils.db_utils import df_to_filtered_records, query_trajectories
 register_page(__name__, path="/data")
 
 intro = """## Data"""
@@ -37,12 +37,10 @@ def clean_location_data(df):
         df['data.end_loc.coordinates'] = df['data.end_loc.coordinates'].apply(lambda x: f'({x[0]}, {x[1]})')
     return df
 
-def update_store_trajectories(start_date: str, end_date: str, tz: str, excluded_uuids: list):
+def update_store_trajectories(start_date: str, end_date: str, tz: str, excluded_uuids):
     global store_trajectories
     df = query_trajectories(start_date, end_date, tz)
-    if df.empty: return {"data": [], "length": 0}
-    non_excluded_df = df[~df['user_id'].isin(excluded_uuids["data"])] # filter excluded UUIDs
-    records = non_excluded_df.to_dict("records")
+    records = df_to_filtered_records(df, 'user_id', excluded_uuids["data"])
     store = {
         "data": records,
         "length": len(records),

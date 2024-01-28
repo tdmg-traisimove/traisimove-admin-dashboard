@@ -23,7 +23,7 @@ import logging
 if os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true':
     logging.basicConfig(level=logging.DEBUG)
 
-from utils.db_utils import query_uuids, query_confirmed_trips, query_demographics
+from utils.db_utils import df_to_filtered_records, query_uuids, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission
 import flask_talisman as flt
 
@@ -204,11 +204,7 @@ def update_store_demographics(start_date, end_date, timezone, excluded_uuids):
     dataframes = query_demographics()
     records = {}
     for key, df in dataframes.items():
-        if df.empty:
-            records[key] = []
-        else:
-            non_excluded_df = df[~df['user_id'].isin(excluded_uuids["data"])] # filter excluded UUIDs
-            records[key] = non_excluded_df.to_dict("records")
+        records[key] = df_to_filtered_records(df, 'user_id', excluded_uuids["data"])
     store = {
         "data": records,
         "length": len(records),
@@ -243,18 +239,14 @@ def update_store_uuids(start_date, end_date, timezone, filters):
     end_date = end_date[:10] if end_date else None
     dff = query_uuids(start_date, end_date, timezone)
     if dff.empty: return {"data": [], "length": 0}, {"data": [], "length": 0}
-
     # if 'exclude-testusers' filter is active,
     # exclude any rows with user_token containing 'test', and
     # output a list of those excluded UUIDs so other callbacks can exclude them too
     if 'exclude-test-users' in filters:
-      excluded_uuids_list = dff[dff['user_token'].str.contains('test')]['user_id'].tolist()
-      non_excluded_dff = dff[~dff['user_id'].isin(excluded_uuids_list)]
-      records = non_excluded_dff.to_dict("records")
+        excluded_uuids_list = dff[dff['user_token'].str.contains('test')]['user_id'].tolist()
     else:
-      excluded_uuids_list = []
-      records = dff.to_dict("records")
-
+        excluded_uuids_list = []
+    records = df_to_filtered_records(dff, 'user_id', excluded_uuids_list)
     store_uuids = {
         "data": records,
         "length": len(records),
@@ -278,10 +270,7 @@ def update_store_trips(start_date, end_date, timezone, excluded_uuids):
     start_date = start_date[:10] if start_date else None
     end_date = end_date[:10] if end_date else None
     df = query_confirmed_trips(start_date, end_date, timezone)
-    if df.empty: return {"data": [], "length": 0}
-
-    non_excluded_df = df[~df['user_id'].isin(excluded_uuids["data"])] # filter excluded UUIDs
-    records = non_excluded_df.to_dict("records")
+    records = df_to_filtered_records(df, 'user_id', excluded_uuids["data"])
     # logging.debug("returning records %s" % records[0:2])
     store = {
         "data": records,

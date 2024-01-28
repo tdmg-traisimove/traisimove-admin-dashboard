@@ -36,6 +36,16 @@ def get_ts_range(start_date: str, end_date: str, tz: str):
             end_ts = arrow.get(end_date, tzinfo='local').replace(hour=23, minute=59, second=59).timestamp()
     return (start_ts, end_ts)
 
+def df_to_filtered_records(df, col_to_filter=None, vals_to_exclude: list[str] = []):
+    """
+    Returns a dictionary of df records, given a dataframe, a column to filter on,
+    and a list of values that rows in that column will be excluded if they match
+    """
+    if df.empty: return []
+    if col_to_filter is not None:
+        df = df[~df[col_to_filter].isin(vals_to_exclude)]
+    return df.to_dict("records")
+
 def query_uuids(start_date: str, end_date: str, tz: str):
     # As of now, time filtering does not apply to UUIDs; we just query all of them.
     # Vestigial code commented out and left below for future reference
