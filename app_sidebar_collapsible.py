@@ -187,23 +187,6 @@ home_page = [
     content,
 ]
 
-@app.callback(
-    Output("store-demographics", "data"),
-    Input('date-picker', 'start_date'),
-    Input('date-picker', 'end_date'),
-    Input('date-picker-timezone', 'value'),
-)
-def update_store_demographics(start_date, end_date, timezone):
-    df = query_demographics()
-    records = {}
-    for key, dataframe in df.items():
-        records[key] = dataframe.to_dict("records")
-    store = {
-        "data": records,
-        "length": len(records),
-    }
-    return store
-
 app.layout = html.Div(
     [
         dcc.Location(id='url', refresh=False),
@@ -229,6 +212,24 @@ def update_store_uuids(start_date, end_date, timezone):
     end_date = end_date[:10] if end_date else None
     dff = query_uuids(start_date, end_date, timezone)
     records = dff.to_dict("records")
+    store = {
+        "data": records,
+        "length": len(records),
+    }
+    return store
+
+
+@app.callback(
+    Output("store-demographics", "data"),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
+    Input('date-picker-timezone', 'value'),
+)
+def update_store_demographics(start_date, end_date, timezone):
+    df = query_demographics()
+    records = {}
+    for key, dataframe in df.items():
+        records[key] = dataframe.to_dict("records")
     store = {
         "data": records,
         "length": len(records),
