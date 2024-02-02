@@ -124,14 +124,14 @@ sidebar = html.Div(
     className="sidebar",
 )
 
-# according to docs, DatePickerRange will accept YYYY-MM-DD format
-today_date = arrow.now().format('YYYY-MM-DD')
-last_week_date = arrow.now().shift(days=-7).format('YYYY-MM-DD')
-tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
-
-content = html.Div([
-    # Global Date Picker
-    html.Div([
+# Global controls including date picker and timezone selector
+def make_controls():
+  # according to docs, DatePickerRange will accept YYYY-MM-DD format
+  today_date = arrow.now().format('YYYY-MM-DD')
+  last_week_date = arrow.now().shift(days=-7).format('YYYY-MM-DD')
+  tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
+  return html.Div([
+        # Global Date Picker
         dcc.DatePickerRange(
             id='date-picker',
             display_format='D MMM Y',
@@ -167,37 +167,34 @@ content = html.Div([
                'display': 'flex',
                'flex-direction': 'column',
                'align-items': 'end'}
-    ),
+    )
 
-    # Pages Content
-    dcc.Loading(
-        type='default',
-        fullscreen=True,
-        children=html.Div(dash.page_container, style={
-            "margin-left": "5rem",
-            "margin-right": "2rem",
-            "padding": "2rem 1rem",
-        })
-    ),
-])
-
-
-home_page = [
-    sidebar,
-    content,
-]
-
-app.layout = html.Div(
-    [
-        dcc.Location(id='url', refresh=False),
-        dcc.Store(id='store-trips', data={}),
-        dcc.Store(id='store-uuids', data={}),
-        dcc.Store(id='store-demographics', data= {}),
-        dcc.Store(id ='store-trajectories', data = {}),   
-        html.Div(id='page-content', children=home_page),
-    ]
+page_content = dcc.Loading(
+    type='default',
+    fullscreen=True,
+    children=html.Div(dash.page_container, style={
+        "margin-left": "5rem",
+        "margin-right": "2rem",
+        "padding": "2rem 1rem",
+    })
 )
 
+
+def make_home_page(): return [
+    sidebar,
+    html.Div([make_controls(), page_content])
+]
+
+
+def make_layout(): return html.Div([
+    dcc.Location(id='url', refresh=False),
+    dcc.Store(id='store-trips', data={}),
+    dcc.Store(id='store-uuids', data={}),
+    dcc.Store(id='store-demographics', data={}),
+    dcc.Store(id='store-trajectories', data={}),
+    html.Div(id='page-content', children=make_home_page()),
+])
+app.layout = make_layout
 
 # Load data stores
 @app.callback(
@@ -271,10 +268,10 @@ def display_page(search):
             return get_cognito_login_page('Unsuccessful authentication, try again.', 'red')
 
         if is_authenticated:
-            return home_page
+            return make_home_page()
         return get_cognito_login_page()
 
-    return home_page
+    return make_home_page()
 
 extra_csp_url = [
     "https://raw.githubusercontent.com",
