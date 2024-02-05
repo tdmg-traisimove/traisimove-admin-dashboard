@@ -132,49 +132,65 @@ def make_controls():
   last_week_date = arrow.now().shift(days=-7).format('YYYY-MM-DD')
   tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
   return html.Div([
-        # Global Date Picker
-        dcc.DatePickerRange(
-            id='date-picker',
-            display_format='D MMM Y',
-            start_date=last_week_date,
-            end_date=today_date,
-            min_date_allowed='2010-1-1',
-            max_date_allowed=tomorrow_date,
-            initial_visible_month=today_date,
-        ),
-        html.Div([
-            html.Span('Query trips using: ', style={'margin-right': '10px'}),
-            dcc.Dropdown(
-                id='date-picker-timezone',
-                options=[
-                    {'label': 'UTC Time', 'value': 'utc'},
-                    {'label': 'My Local Timezone', 'value': 'local'},
-                    # {'label': 'Local Timezone of Trips', 'value': 'trips'},
-                ],
-                value='utc',
-                clearable=False,
-                searchable=False,
-                style={'width': '220px'},
-            ),
-        ],
-            style={'margin': '10px 10px 0 0',
-                   'display': 'flex',
-                   'justify-content': 'right',
-                   'align-items': 'center'},
-        ),
-        dcc.Checklist(
-            id='global-filters',
-            options=[
-                {'label': 'Exclude "test" users', 'value': 'exclude-test-users'},
-            ],
-            value=['exclude-test-users'],
-        ),
-    ],
-        style={'margin': '10px 10px 0 0',
-               'display': 'flex',
-               'flex-direction': 'column',
-               'align-items': 'end'}
-    )
+      html.Div([
+          # Global Date Picker
+          dcc.DatePickerRange(
+              id='date-picker',
+              display_format='D MMM Y',
+              start_date=last_week_date,
+              end_date=today_date,
+              min_date_allowed='2010-1-1',
+              max_date_allowed=tomorrow_date,
+              initial_visible_month=today_date,
+          ),
+          dbc.Button(
+              html.I(className="fas fa-bars", id='collapse-icon'),
+              outline=True,
+              id="collapse-button",
+              n_clicks=0,
+              style={'color': '#444', 'border': '1px solid #dbdbdb',
+                    'border-radius': '3px', 'margin-left': '3px'}
+          ),
+      ],
+          style={'display': 'flex'},
+      ),
+      dbc.Collapse([
+          html.Div([
+              html.Span('Query trips using: ', style={'margin-right': '10px'}),
+              dcc.Dropdown(
+                  id='date-picker-timezone',
+                  options=[
+                      {'label': 'UTC Time', 'value': 'utc'},
+                      {'label': 'My Local Timezone', 'value': 'local'},
+                      # {'label': 'Local Timezone of Trips', 'value': 'trips'},
+                  ],
+                  value='utc',
+                  clearable=False,
+                  searchable=False,
+                  style={'width': '180px'},
+              )]
+          ),
+
+          dcc.Checklist(
+              id='global-filters',
+              options=[
+                  {'label': 'Exclude "test" users',
+                   'value': 'exclude-test-users'},
+              ],
+              value=['exclude-test-users'],
+              style={'margin-top': '10px'},
+          ),
+      ],
+          id='collapse-filters',
+          is_open=False,
+          style={'padding': '5px 15px 10px', 'border': '1px solid #dbdbdb', 'border-top': '0'}
+      ),
+  ],
+      style={'margin': '10px 10px 0 auto',
+             'width': 'fit-content',
+             'display': 'flex',
+             'flex-direction': 'column'}
+  )
 
 page_content = dcc.Loading(
     type='default',
@@ -203,6 +219,20 @@ def make_layout(): return html.Div([
     html.Div(id='page-content', children=make_home_page()),
 ])
 app.layout = make_layout
+
+# make the 'filters' menu collapsible
+@app.callback(
+    Output("collapse-filters", "is_open"),
+    Output("collapse-icon", "className"),
+    [Input("collapse-button", "n_clicks")],
+    [Input("collapse-filters", "is_open")],
+)
+def toggle_collapse_filters(n, is_open):
+    if not n: return (is_open, "fas fa-bars")
+    if is_open:
+      return (False, "fas fa-bars")
+    else:
+      return (True, "fas fa-chevron-up")
 
 # Load data stores
 @app.callback(
