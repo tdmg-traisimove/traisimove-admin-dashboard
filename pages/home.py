@@ -18,6 +18,7 @@ import arrow
 import emission.core.get_database as edb
 
 from utils.permissions import has_permission
+from utils.datetime_utils import iso_to_date_only
 
 register_page(__name__, path="/")
 
@@ -175,13 +176,13 @@ def generate_plot_sign_up_trend(store_uuids):
 @callback(
     Output('fig-trips-trend', 'figure'),
     Input('store-trips', 'data'),
-    Input('date-picker', 'start_date'),
-    Input('date-picker', 'end_date'),
+    Input('date-picker', 'start_date'), # these are ISO strings
+    Input('date-picker', 'end_date'), # these are ISO strings
 )
 def generate_plot_trips_trend(store_trips, start_date, end_date):
     df = pd.DataFrame(store_trips.get("data"))
     trend_df = None
-    start_date, end_date = start_date[:10], end_date[:10] # dates as YYYY-MM-DD
+    (start_date, end_date) = iso_to_date_only(start_date, end_date)
     if not df.empty and has_permission('overview_trips_trend'):
         trend_df = compute_trips_trend(df, date_col = "trip_start_time_str")
     fig = generate_barplot(trend_df, x = 'date', y = 'count', title = f"Trips trend({start_date} to {end_date})")

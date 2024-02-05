@@ -23,6 +23,7 @@ import logging
 if os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true':
     logging.basicConfig(level=logging.DEBUG)
 
+from utils.datetime_utils import iso_to_date_only
 from utils.db_utils import df_to_filtered_records, query_uuids, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission
 import flask_talisman as flt
@@ -124,14 +125,14 @@ sidebar = html.Div(
     className="sidebar",
 )
 
-# according to docs, DatePickerRange will accept YYYY-MM-DD format
-today_date = arrow.now().format('YYYY-MM-DD')
-last_week_date = arrow.now().shift(days=-7).format('YYYY-MM-DD')
-tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
-
-content = html.Div([
-    # Global Date Picker
-    html.Div([
+# Global controls including date picker and timezone selector
+def make_controls():
+  # according to docs, DatePickerRange will accept YYYY-MM-DD format
+  today_date = arrow.now().format('YYYY-MM-DD')
+  last_week_date = arrow.now().shift(days=-7).format('YYYY-MM-DD')
+  tomorrow_date = arrow.now().shift(days=1).format('YYYY-MM-DD')
+  return html.Div([
+        # Global Date Picker
         dcc.DatePickerRange(
             id='date-picker',
             display_format='D MMM Y',
@@ -173,25 +174,69 @@ content = html.Div([
                'display': 'flex',
                'flex-direction': 'column',
                'align-items': 'end'}
-    ),
+    )
 
-    # Pages Content
-    dcc.Loading(
-        type='default',
-        fullscreen=True,
-        children=html.Div(dash.page_container, style={
-            "margin-left": "5rem",
-            "margin-right": "2rem",
-            "padding": "2rem 1rem",
-        })
-    ),
-])
+page_content = dcc.Loading(
+    type='default',
+    fullscreen=True,
+    children=html.Div(dash.page_container, style={
+        "margin-left": "5rem",
+        "margin-right": "2rem",
+        "padding": "2rem 1rem",
+    })
+)
 
 
-home_page = [
+def make_home_page(): return [
     sidebar,
-    content,
+    html.Div([make_controls(), page_content])
 ]
+
+
+def make_layout(): return html.Div([
+    dcc.Location(id='url', refresh=False),
+    dcc.Store(id='store-trips', data={}),
+    dcc.Store(id='store-uuids', data={}),
+    dcc.Store(id='store-excluded-uuids', data={}), # if 'test' users are excluded, a list of their uuids
+    dcc.Store(id='store-demographics', data={}),
+    dcc.Store(id='store-trajectories', data={}),
+    html.Div(id='page-content', children=make_home_page()),
+])
+app.layout = make_layout
+
+# Load data stores
+@app.callback(
+    Output("store-uuids", "data"),
+    Output("store-excluded-uuids", "data"),
+    Input('date-picker', 'start_date'),  # these are ISO strings
+    Input('date-picker', 'end_date'),  # these are ISO strings
+    Input('date-picker-timezone', 'value'),
+    Input('global-filters', 'value'),
+)
+def update_store_uuids(start_date, end_date, timezone, filters):
+    (start_date, end_date) = iso_to_date_only(start_date, end_date)
+    dff = query_uuids(start_date, end_date, timezone)
+    if dff.empty:
+        return {"data": [], "length": 0}, {"data": [], "length": 0}
+    # if 'exclude-testusers' filter is active,
+    # exclude any rows with user_token containing 'test', and
+    # output a list of those excluded UUIDs so other callbacks can exclude them too
+    if 'exclude-test-users' in filters:
+        excluded_uuids_list = dff[dff['user_token'].str.contains(
+            'test')]['user_id'].tolist()
+    else:
+        excluded_uuids_list = []
+    records = df_to_filtered_records(dff, 'user_id', excluded_uuids_list)
+    store_uuids = {
+        "data": records,
+        "length": len(records),
+    }
+    store_excluded_uuids = {
+        "data": excluded_uuids_list,
+        "length": len(excluded_uuids_list),
+    }
+    return store_uuids, store_excluded_uuids
+
 
 @app.callback(
     Output("store-demographics", "data"),
@@ -211,64 +256,16 @@ def update_store_demographics(start_date, end_date, timezone, excluded_uuids):
     }
     return store
 
-app.layout = html.Div(
-    [
-        dcc.Location(id='url', refresh=False),
-        dcc.Store(id='store-trips', data={}),
-        dcc.Store(id='store-uuids', data={}),
-        dcc.Store(id='store-excluded-uuids', data={}), # if 'test' users are excluded, a list of their uuids
-        dcc.Store(id='store-demographics', data= {}),
-        dcc.Store(id ='store-trajectories', data = {}),   
-        html.Div(id='page-content', children=home_page),
-    ]
-)
-
-
-# Load data stores
-@app.callback(
-    Output("store-uuids", "data"),
-    Output("store-excluded-uuids", "data"),
-    Input('date-picker', 'start_date'),  # these are ISO strings
-    Input('date-picker', 'end_date'),  # these are ISO strings
-    Input('date-picker-timezone', 'value'),
-    Input('global-filters', 'value'),
-)
-def update_store_uuids(start_date, end_date, timezone, filters):
-    # trim the time part, leaving only date as YYYY-MM-DD
-    start_date = start_date[:10] if start_date else None
-    end_date = end_date[:10] if end_date else None
-    dff = query_uuids(start_date, end_date, timezone)
-    if dff.empty: return {"data": [], "length": 0}, {"data": [], "length": 0}
-    # if 'exclude-testusers' filter is active,
-    # exclude any rows with user_token containing 'test', and
-    # output a list of those excluded UUIDs so other callbacks can exclude them too
-    if 'exclude-test-users' in filters:
-        excluded_uuids_list = dff[dff['user_token'].str.contains('test')]['user_id'].tolist()
-    else:
-        excluded_uuids_list = []
-    records = df_to_filtered_records(dff, 'user_id', excluded_uuids_list)
-    store_uuids = {
-        "data": records,
-        "length": len(records),
-    }
-    store_excluded_uuids = {
-        "data": excluded_uuids_list,
-        "length": len(excluded_uuids_list),
-    }
-    return store_uuids, store_excluded_uuids
-
 
 @app.callback(
     Output("store-trips", "data"),
-    Input('date-picker', 'start_date'),
-    Input('date-picker', 'end_date'),
+    Input('date-picker', 'start_date'), # these are ISO strings
+    Input('date-picker', 'end_date'), # these are ISO strings
     Input('date-picker-timezone', 'value'),
     Input('store-excluded-uuids', 'data'),
 )
 def update_store_trips(start_date, end_date, timezone, excluded_uuids):
-    # trim the time part, leaving only date as YYYY-MM-DD
-    start_date = start_date[:10] if start_date else None
-    end_date = end_date[:10] if end_date else None
+    (start_date, end_date) = iso_to_date_only(start_date, end_date)
     df = query_confirmed_trips(start_date, end_date, timezone)
     records = df_to_filtered_records(df, 'user_id', excluded_uuids["data"])
     # logging.debug("returning records %s" % records[0:2])
@@ -293,10 +290,10 @@ def display_page(search):
             return get_cognito_login_page('Unsuccessful authentication, try again.', 'red')
 
         if is_authenticated:
-            return home_page
+            return make_home_page()
         return get_cognito_login_page()
 
-    return home_page
+    return make_home_page()
 
 extra_csp_url = [
     "https://raw.githubusercontent.com",

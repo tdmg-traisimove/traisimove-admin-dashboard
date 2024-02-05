@@ -2,8 +2,6 @@ import logging
 import arrow
 from uuid import UUID
 
-import arrow
-
 import pandas as pd
 import pymongo
 
@@ -15,26 +13,7 @@ import emission.core.wrapper.motionactivity as ecwm
 
 from utils import constants
 from utils import permissions as perm_utils
-
-MAX_EPOCH_TIME = 2 ** 31 - 1
-
-def get_ts_range(start_date: str, end_date: str, tz: str):
-    """
-    Returns a tuple of (start_ts, end_ts) as timestamps, given start_date and end_date in ISO format
-    and the timezone mode in which the dates should be resolved to timestamps ('utc' or 'local')
-    """
-    start_ts, end_ts = None, MAX_EPOCH_TIME
-    if start_date is not None:
-        if tz == 'utc':
-            start_ts = arrow.get(start_date).timestamp()
-        elif tz == 'local':
-            start_ts = arrow.get(start_date, tzinfo='local').timestamp()
-    if end_date is not None:
-        if tz == 'utc':
-            end_ts = arrow.get(end_date).replace(hour=23, minute=59, second=59).timestamp()
-        elif tz == 'local':
-            end_ts = arrow.get(end_date, tzinfo='local').replace(hour=23, minute=59, second=59).timestamp()
-    return (start_ts, end_ts)
+from utils.datetime_utils import iso_range_to_ts_range
 
 def df_to_filtered_records(df, col_to_filter=None, vals_to_exclude: list[str] = []):
     """
@@ -84,7 +63,7 @@ def query_uuids(start_date: str, end_date: str, tz: str):
     return df
 
 def query_confirmed_trips(start_date: str, end_date: str, tz: str):
-    (start_ts, end_ts) = get_ts_range(start_date, end_date, tz)
+    (start_ts, end_ts) = iso_range_to_ts_range(start_date, end_date, tz)
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
     # we can then remove the start_time, end_time logic
@@ -167,7 +146,7 @@ def query_demographics():
 
 def query_trajectories(start_date: str, end_date: str, tz: str):
     
-    (start_ts, end_ts) = get_ts_range(start_date, end_date, tz)
+    (start_ts, end_ts) = iso_range_to_ts_range(start_date, end_date, tz)
     ts = esta.TimeSeries.get_aggregate_time_series()
     entries = ts.find_entries(
         key_list=["analysis/recreated_location"],
