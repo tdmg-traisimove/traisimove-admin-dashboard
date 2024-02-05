@@ -23,6 +23,7 @@ import logging
 if os.getenv('DASH_DEBUG_MODE', 'True').lower() == 'true':
     logging.basicConfig(level=logging.DEBUG)
 
+from utils.datetime_utils import iso_to_date_only
 from utils.db_utils import query_uuids, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission
 import flask_talisman as flt
@@ -204,9 +205,7 @@ app.layout = make_layout
     Input('date-picker-timezone', 'value'),
 )
 def update_store_uuids(start_date, end_date, timezone):
-    # trim the time part, leaving only date as YYYY-MM-DD
-    start_date = start_date[:10] if start_date else None
-    end_date = end_date[:10] if end_date else None
+    (start_date, end_date) = iso_to_date_only(start_date, end_date)
     dff = query_uuids(start_date, end_date, timezone)
     records = dff.to_dict("records")
     store = {
@@ -236,14 +235,12 @@ def update_store_demographics(start_date, end_date, timezone):
 
 @app.callback(
     Output("store-trips", "data"),
-    Input('date-picker', 'start_date'),
-    Input('date-picker', 'end_date'),
+    Input('date-picker', 'start_date'), # these are ISO strings
+    Input('date-picker', 'end_date'), # these are ISO strings
     Input('date-picker-timezone', 'value'),
 )
 def update_store_trips(start_date, end_date, timezone):
-    # trim the time part, leaving only date as YYYY-MM-DD
-    start_date = start_date[:10] if start_date else None
-    end_date = end_date[:10] if end_date else None
+    (start_date, end_date) = iso_to_date_only(start_date, end_date)
     df = query_confirmed_trips(start_date, end_date, timezone)
     records = df.to_dict("records")
     # logging.debug("returning records %s" % records[0:2])
