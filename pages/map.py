@@ -83,20 +83,6 @@ def create_heatmap_fig(coordinates):
                 
             )
         )
-
-        # fig.add_trace(
-        #     go.Scattermapbox(
-        #         lat=coordinates['lat'],
-        #         lon=coordinates['lon'],
-        #         mode='markers',
-        #         marker=go.scattermapbox.Marker(
-        #             size=9,
-        #             color=coordinates['color'],
-        #         ),
-        #         name = '',
-        #     )
-        # )
-
         fig.update_layout(
             mapbox_style='open-street-map',
             mapbox_center_lon=coordinates['lon'][0],
