@@ -21,7 +21,7 @@ def df_to_filtered_records(df, col_to_filter=None, vals_to_exclude: list[str] = 
     and a list of values that rows in that column will be excluded if they match
     """
     if df.empty: return []
-    if col_to_filter and vals_to_exclude:
+    if col_to_filter and vals_to_exclude: # will only filter if both are not None or []
         df = df[~df[col_to_filter].isin(vals_to_exclude)]
     return df.to_dict("records")
 
