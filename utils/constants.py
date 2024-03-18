@@ -17,7 +17,11 @@ VALID_TRIP_COLS = [
     "data.end_local_dt",
     "data.end_fmt_time",
     "data.duration",
+    "data.duration_seconds",
     "data.distance",
+    "data.distance_km",
+    "data.distance_miles",
+    "data.distance_meters",
     "data.start_loc.coordinates",
     "data.end_loc.coordinates",
     "user_id"
@@ -43,4 +47,48 @@ valid_uuids_columns = [
     'app_version',
     'os_version',
     'phone_lang',
+]
+
+BINARY_DEMOGRAPHICS_COLS = [
+    'user_id',
+    '_id',
+]
+
+EXCLUDED_DEMOGRAPHICS_COLS = [
+    'data.xmlResponse', 
+    'data.name',
+    'data.version',
+    'data.label',
+    'xmlns:jr',
+    'xmlns:orx',
+    'id',
+    'start',
+    'end',
+    'attrxmlns:jr',
+    'attrxmlns:orx',
+    'attrid',
+    '__version__',
+    'attrversion',
+    'instanceID',
+]
+
+EXCLUDED_TRAJECTORIES_COLS = [
+    'data.loc.type',
+    'data.loc.coordinates',
+    'data.local_dt.year',
+    'data.local_dt.month',
+    'data.local_dt.day',
+    'data.local_dt.hour',
+    'data.local_dt.minute',
+    'data.local_dt.second',
+    'data.local_dt.weekday',
+    'data.local_dt.timezone',
+    'data.local_dt_year',
+    'data.local_dt_month',
+    'data.local_dt_day',
+    'data.local_dt_hour',
+    'data.local_dt_minute',
+    'data.local_dt_second',
+    'data.local_dt_weekday',
+    'data.local_dt_timezone',
 ]

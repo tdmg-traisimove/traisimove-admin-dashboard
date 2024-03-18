@@ -5,9 +5,9 @@ https://towardsdatascience.com/dockerize-your-dash-app-1e155dd1cea3
 
 ## How to run it: Docker Compose (recommended)
 
-`docker compose -f docker-compose-dash-app.yml build`
+`docker compose -f docker-compose-dev.yml build`
 
-`docker compose -f docker-compose-dash-app.yml up`
+`docker compose -f docker-compose-dev.yml up`
 
 You **must** use this method. Do **not** try to directly by setting up a virtualenv with the `requirements.txt`
 This uses components of the e-mission-server core, so it must have the e-mission-server modules in the PYTHONPATH
@@ -65,12 +65,18 @@ These are all the permissions that you can specify:
 ### Data Page
 - `data_uuids`: User can view the UUIDs data in the Data page.
 - `data_trips`: User can view the trips data in the Data page.
+- `data_demographics`: User can view the demographics data in the Data page.
+- `data_trajectories`: User can view the trajectories data in the Data page.
 - `data_trips_columns_exclude`: It used to specify a list of column names that should be excluded from the trips data
 that is displayed on the Data page. It includes valid columns from the **Stage_analysis_timeseries** collection. Valid
 columns are specified in the following sections.
 - `data_uuids_columns_exclude`: It used to specify a list of column names that should be excluded from the uuids data
 that is displayed on the Data page. It includes valid columns from the **Stage_uuids** collection. Valid columns are 
 specified in the following sections.
+- `data_demographics_columns_exclude`: It used to specify a list of column names that should be excluded from the demographics data
+that is displayed on the Data page. 
+- `data_trajectories_columns_exclude`: It used to specify a list of column names that should be excluded from the trajectories data
+that is displayed on the Data page.
 
 ### Token Page
 - `token_generate`: User can generate new tokens in the Token page.

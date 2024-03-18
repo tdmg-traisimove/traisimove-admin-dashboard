@@ -1,8 +1,6 @@
 import logging
-from datetime import datetime, timezone
-from uuid import UUID
-
 import arrow
+from uuid import UUID
 
 import pandas as pd
 import pymongo
@@ -11,30 +9,47 @@ import emission.core.get_database as edb
 import emission.storage.timeseries.abstract_timeseries as esta
 import emission.storage.timeseries.aggregate_timeseries as estag
 import emission.storage.timeseries.timequery as estt
+import emission.core.wrapper.motionactivity as ecwm
 import emission.storage.timeseries.geoquery as estg
 import emission.storage.decorations.section_queries as esds
 import emission.core.wrapper.modeprediction as ecwm
 
 from utils import constants
 from utils import permissions as perm_utils
+from utils.datetime_utils import iso_range_to_ts_range
 
+def df_to_filtered_records(df, col_to_filter=None, vals_to_exclude: list[str] = []):
+    """
+    Returns a dictionary of df records, given a dataframe, a column to filter on,
+    and a list of values that rows in that column will be excluded if they match
+    """
+    if df.empty: return []
+    if col_to_filter and vals_to_exclude: # will only filter if both are not None or []
+        df = df[~df[col_to_filter].isin(vals_to_exclude)]
+    return df.to_dict("records")
 
-def query_uuids(start_date, end_date):
-    query = {'update_ts': {'$exists': True}}
-    if start_date is not None:
-        start_time = datetime.combine(start_date, datetime.min.time()).astimezone(timezone.utc)
-        query['update_ts']['$gte'] = start_time
+def query_uuids(start_date: str, end_date: str, tz: str):
+    # As of now, time filtering does not apply to UUIDs; we just query all of them.
+    # Vestigial code commented out and left below for future reference
 
-    if end_date is not None:
-        end_time = datetime.combine(end_date, datetime.max.time()).astimezone(timezone.utc)
-        query['update_ts']['$lt'] = end_time
+    # logging.debug("Querying the UUID DB for %s -> %s" % (start_date,end_date))
+    # query = {'update_ts': {'$exists': True}}
+    # if start_date is not None:
+    #     # have arrow create a datetime using start_date and time 00:00:00 in UTC
+    #     start_time = arrow.get(start_date).datetime
+    #     query['update_ts']['$gte'] = start_time
+    # if end_date is not None:
+    #     # have arrow create a datetime using end_date and time 23:59:59 in UTC
+    #     end_time = arrow.get(end_date).replace(hour=23, minute=59, second=59).datetime
+    #     query['update_ts']['$lt'] = end_time
+    # projection = {
+    #     '_id': 0,
+    #     'user_id': '$uuid',
+    #     'user_token': '$user_email',
+    #     'update_ts': 1
+    # }
 
-    projection = {
-        '_id': 0,
-        'user_id': '$uuid',
-        'user_token': '$user_email',
-        'update_ts': 1
-    }
+    logging.debug("Querying the UUID DB for (no date range)")
 
     # This should actually use the profile DB instead of (or in addition to)
     # the UUID DB so that we can see the app version, os, manufacturer...
@@ -50,14 +65,8 @@ def query_uuids(start_date, end_date):
         df.drop(columns=["uuid", "_id"], inplace=True)
     return df
 
-def query_confirmed_trips(start_date, end_date):
-    start_ts, end_ts = None, datetime.max.replace(tzinfo=timezone.utc).timestamp()
-    if start_date is not None:
-        start_ts = datetime.combine(start_date, datetime.min.time()).timestamp()
-
-    if end_date is not None:
-        end_ts = datetime.combine(end_date, datetime.max.time()).timestamp()
-
+def query_confirmed_trips(start_date: str, end_date: str, tz: str):
+    (start_ts, end_ts) = iso_range_to_ts_range(start_date, end_date, tz)
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
     # we can then remove the start_time, end_time logic
@@ -86,14 +95,16 @@ def query_confirmed_trips(start_date, end_date):
         # https://github.com/e-mission/op-admin-dashboard/issues/29#issuecomment-1530105040
         # https://github.com/e-mission/op-admin-dashboard/issues/29#issuecomment-1530439811
         # so just replacing the distance and duration with the humanized values for now
+        df['data.distance_meters'] = df['data.distance']
         use_imperial = perm_utils.config.get("display_config",
             {"use_imperial": False}).get("use_imperial", False)
         # convert to km to humanize
-        df['data.distance'] = df['data.distance'] / 1000
+        df['data.distance_km'] = df['data.distance'] / 1000
         # convert km further to miles because this is the US, Liberia or Myanmar
         # https://en.wikipedia.org/wiki/Mile
+        df['data.duration_seconds'] = df['data.duration']
         if use_imperial:
-            df['data.distance'] = df['data.distance'] * 0.6213712
+            df['data.distance_miles'] = df['data.distance_km'] * 0.6213712
 
         df['data.duration'] = df['data.duration'].apply(lambda d: arrow.utcnow().shift(seconds=d).humanize(only_distance=True))
 
@@ -102,26 +113,77 @@ def query_confirmed_trips(start_date, end_date):
     # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
     return df
 
+def query_demographics():
+    # Returns dictionary of df where key represent differnt survey id and values are df for each survey
+    logging.debug("Querying the demographics for (no date range)")
+    ts = esta.TimeSeries.get_aggregate_time_series()
+
+    entries = ts.find_entries(["manual/demographic_survey"])
+    data = list(entries)
+
+    available_key = {}
+    for entry in data:
+        survey_key = list(entry['data']['jsonDocResponse'].keys())[0]
+        if survey_key not in available_key:
+            available_key[survey_key] = []
+        available_key[survey_key].append(entry)
+
+    dataframes = {}
+    for key, json_object in available_key.items():
+        df = pd.json_normalize(json_object)
+        dataframes[key] = df
+
+    for key, df in dataframes.items():
+        if not df.empty:
+            for col in constants.BINARY_DEMOGRAPHICS_COLS:
+                if col in df.columns:
+                    df[col] = df[col].apply(str) 
+            columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
+            df.drop(columns= columns_to_drop, inplace=True) 
+            modified_columns = perm_utils.get_demographic_columns(df.columns)  
+            df.columns = modified_columns 
+            df.columns=[col.rsplit('.',1)[-1] if col.startswith('data.jsonDocResponse.') else col for col in df.columns]  
+            for col in constants.EXCLUDED_DEMOGRAPHICS_COLS:
+                if col in df.columns:
+                    df.drop(columns= [col], inplace=True) 
+                    
+    return dataframes
+
+def query_trajectories(start_date: str, end_date: str, tz: str):
+    
+    (start_ts, end_ts) = iso_range_to_ts_range(start_date, end_date, tz)
+    ts = esta.TimeSeries.get_aggregate_time_series()
+    entries = ts.find_entries(
+        key_list=["analysis/recreated_location"],
+        time_query=estt.TimeQuery("data.ts", start_ts, end_ts),
+    )
+    df = pd.json_normalize(list(entries))
+    if not df.empty:
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].apply(str)
+        columns_to_drop = [col for col in df.columns if col.startswith("metadata")]
+        df.drop(columns= columns_to_drop, inplace=True) 
+        for col in constants.EXCLUDED_TRAJECTORIES_COLS:
+            if col in df.columns:
+                df.drop(columns= [col], inplace=True) 
+        df['data.mode_str'] = df['data.mode'].apply(lambda x: ecwm.MotionTypes(x).name if x in set(enum.value for enum in ecwm.MotionTypes) else 'UNKNOWN')
+    return df
+
 
 def add_user_stats(user_data):
     for user in user_data:
         user_uuid = UUID(user['user_id'])
 
-        # TODO: Use the time-series functions when the needed functionality is added.
-        total_trips = edb.get_analysis_timeseries_db().count_documents(
-            {
-                'user_id': user_uuid,
-                'metadata.key': 'analysis/confirmed_trip',
-            }
+        total_trips = esta.TimeSeries.get_aggregate_time_series().find_entries_count(
+            key_list=["analysis/confirmed_trip"],
+            extra_query_list=[{'user_id': user_uuid}]
         )
         user['total_trips'] = total_trips
 
-        labeled_trips = edb.get_analysis_timeseries_db().count_documents(
-            {
-                'user_id': user_uuid,
-                'metadata.key': 'analysis/confirmed_trip',
-                'data.user_input': {'$ne': {}},
-            }
+        labeled_trips = esta.TimeSeries.get_aggregate_time_series().find_entries_count(
+            key_list=["analysis/confirmed_trip"],
+            extra_query_list=[{'user_id': user_uuid}, {'data.user_input': {'$ne': {}}}]
         )
         user['labeled_trips'] = labeled_trips
 
