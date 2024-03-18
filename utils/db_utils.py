@@ -226,15 +226,28 @@ def add_user_stats(user_data):
 
     return user_data
 
-def query_segments_crossing_endpoints(poly_region_start, poly_region_end):
+def query_segments_crossing_endpoints(poly_region_start, poly_region_end, start_date: str, end_date: str, tz: str, excluded_uuids: list[str]):
+    (start_ts, end_ts) = iso_range_to_ts_range(start_date, end_date, tz)
+    tq = estt.TimeQuery("data.ts", start_ts, end_ts)
+    not_excluded_uuid_query = {'user_id': {'$nin': [UUID(uuid) for uuid in excluded_uuids]}}
     agg_ts = estag.AggregateTimeSeries().get_aggregate_time_series()
 
-    locs_matching_start = agg_ts.get_data_df("analysis/recreated_location", geo_query = estg.GeoQuery(['data.loc'], poly_region_start))
+    locs_matching_start = agg_ts.get_data_df(
+                              "analysis/recreated_location",
+                              geo_query = estg.GeoQuery(['data.loc'], poly_region_start),
+                              time_query = tq,
+                              extra_query_list=[not_excluded_uuid_query]
+                          )
     locs_matching_start = locs_matching_start.drop_duplicates(subset=['section'])
     if locs_matching_start.empty:
         return locs_matching_start
     
-    locs_matching_end = agg_ts.get_data_df("analysis/recreated_location", geo_query = estg.GeoQuery(['data.loc'], poly_region_end))
+    locs_matching_end = agg_ts.get_data_df(
+                            "analysis/recreated_location",
+                            geo_query = estg.GeoQuery(['data.loc'], poly_region_end),
+                            time_query = tq,
+                            extra_query_list=[not_excluded_uuid_query]
+                        )
     locs_matching_end = locs_matching_end.drop_duplicates(subset=['section'])
     if locs_matching_end.empty:
         return locs_matching_end

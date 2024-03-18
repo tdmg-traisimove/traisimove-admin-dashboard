@@ -156,9 +156,13 @@ def format_duration_df(df, time_column_name='Time sample'):
     Output('message', 'children'),
     Input('link-trip-time-start', 'data'),
     Input('link-trip-time-end', 'data'),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
+    Input('date-picker-timezone', 'value'),
+    Input('store-excluded-uuids', 'data'),
     prevent_initial_call=True,
 )
-def generate_content_on_endpoints_change(link_trip_time_start_str, link_trip_time_end_str):
+def generate_content_on_endpoints_change(link_trip_time_start_str, link_trip_time_end_str, start_date, end_date, timezone, excluded_uuids):
     link_trip_time_start = json.loads(link_trip_time_start_str)
     link_trip_time_end = json.loads(link_trip_time_end_str)
     if len(link_trip_time_end["features"]) == 0 or len(link_trip_time_start["features"]) == 0:
@@ -171,6 +175,10 @@ def generate_content_on_endpoints_change(link_trip_time_start_str, link_trip_tim
     df = db_utils.query_segments_crossing_endpoints(
         link_trip_time_start["features"][len(link_trip_time_start["features"])-1],
         link_trip_time_end["features"][len(link_trip_time_end["features"])-1],
+        start_date,
+        end_date,
+        timezone,
+        excluded_uuids["data"]
     )
     total_nb_trips = df.shape[0]
     if total_nb_trips > 0:
