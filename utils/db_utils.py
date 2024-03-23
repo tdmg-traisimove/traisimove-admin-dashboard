@@ -12,7 +12,6 @@ import emission.storage.timeseries.timequery as estt
 import emission.core.wrapper.motionactivity as ecwm
 import emission.storage.timeseries.geoquery as estg
 import emission.storage.decorations.section_queries as esds
-import emission.core.wrapper.modeprediction as ecwm
 
 from utils import constants
 from utils import permissions as perm_utils
