@@ -222,7 +222,9 @@ layout = html.Div(
                 dcc.Dropdown(id='user-mode-dropdown', multi=True),
             ], style={'display': 'block'})
         ]),
-
+        dbc.Row(
+            html.H4("No trip data available for the selected date", id="no-trip-text")
+        ),
         dbc.Row(
             dcc.Graph(id="trip-map")
         ),
@@ -324,13 +326,19 @@ def process_trips_group(trips_group):
 
 @callback(
     Output('store-trips-map', 'data'),
+    Output('no-trip-text', 'style'),
+    Output('trip-map', 'style'),
     Input('store-trips', 'data'),
 )
 def store_trips_map_data(trips_data):
+    # if there is no trips_data for selected date, show 'no-trip-text'
+    if trips_data == None or 'length' not in trips_data or trips_data['length'] == 0:
+        return {'users_data_by_user_id': {}, 'users_data_by_user_mode': {}}, { 'display' : 'block', 'margin-top' : '40px' }, { 'display' : 'none' }
+    
     trips_group_by_user_id = get_trips_group_by_user_id(trips_data)
     users_data_by_user_id = process_trips_group(trips_group_by_user_id)
   
     trips_group_by_user_mode = get_trips_group_by_user_mode(trips_data)
     users_data_by_user_mode = process_trips_group(trips_group_by_user_mode)
-    
-    return {'users_data_by_user_id':users_data_by_user_id, 'users_data_by_user_mode':users_data_by_user_mode}
+
+    return {'users_data_by_user_id':users_data_by_user_id, 'users_data_by_user_mode':users_data_by_user_mode}, { 'display' : 'none' }, { 'display' : 'block' }
