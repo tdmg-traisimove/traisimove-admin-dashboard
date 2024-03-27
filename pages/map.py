@@ -130,9 +130,11 @@ def get_trips_group_by_user_id(trips_data):
 
 def get_trips_group_by_user_mode(trips_data):
     trips_group_by_user_mode = None
-    trips_df = pd.DataFrame(trips_data['data'])
+    trips_df = pd.DataFrame(trips_data.get('data'))
     if not trips_df.empty:
-        trips_df['data.user_input.mode_confirm'] = trips_df['data.user_input.mode_confirm'].fillna('Unknown')
+        if 'data.user_input.mode_confirm' not in trips_df.columns:
+            trips_df['data.user_input.mode_confirm'] = None
+        trips_df['data.user_input.mode_confirm'] = trips_df['data.user_input.mode_confirm'].fillna('Unlabeled')
         trips_group_by_user_mode = trips_df.groupby('data.user_input.mode_confirm')
     return trips_group_by_user_mode
 
@@ -257,6 +259,7 @@ def update_user_emails_options(trips_data, selected_user_emails):
 @callback(
     Output('user-mode-dropdown', 'options'),
     Output('user-mode-dropdown', 'value'),
+    Output('user-mode-dropdown', 'disabled'),
     Input('store-trips-map', 'data'),
     Input('user-mode-dropdown', 'value'),
 )
@@ -264,7 +267,9 @@ def update_user_modes_options(trips_data, selected_user_modes):
     user_modes_options, user_modes = create_user_modes_options(trips_data['users_data_by_user_mode'])
     if selected_user_modes is not None:
         selected_user_modes = [mode_confirm for mode_confirm in selected_user_modes if mode_confirm in user_modes]
-    return user_modes_options, selected_user_modes
+    
+    # Disable the 'mode' button if no user_modes_options have 0 values
+    return user_modes_options, selected_user_modes, len(user_modes_options) == 0
 
 @callback(
     Output('trip-map', 'figure'),
