@@ -332,7 +332,7 @@ def process_trips_group(trips_group):
 )
 def store_trips_map_data(trips_data):
     # if there is no trips_data for selected date, show 'no-trip-text'
-    if trips_data == None or 'length' not in trips_data or trips_data['length'] == 0:
+    if not trips_data['data']:
         return {'users_data_by_user_id': {}, 'users_data_by_user_mode': {}}, { 'display' : 'block', 'margin-top' : '40px' }, { 'display' : 'none' }
     
     trips_group_by_user_id = get_trips_group_by_user_id(trips_data)
