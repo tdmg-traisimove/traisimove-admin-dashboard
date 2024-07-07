@@ -69,14 +69,40 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
     ts = esta.TimeSeries.get_aggregate_time_series()
     # Note to self, allow end_ts to also be null in the timequery
     # we can then remove the start_time, end_time logic
-    entries = ts.find_entries(
-        key_list=["analysis/confirmed_trip"],
+    df = ts.get_data_df("analysis/confirmed_trip",
         time_query=estt.TimeQuery("data.start_ts", start_ts, end_ts),
     )
-    df = pd.json_normalize(list(entries))
 
-    # logging.debug("Before filtering, df columns are %s" % df.columns)
+    logging.debug("Before filtering, df columns are %s" % df.columns)
     if not df.empty:
+        # Since we use `get_data_df` instead of `pd.json_normalize`,
+        # we lose the "data" prefix on the fields and they are only flattened one level
+        # Here, we restore the prefix for the VALID_TRIP_COLS from constants.py
+        # for backwards compatibility. We do this for all columns EXCEPT:
+        # 1. the coordinates, which we will have to pull out from the geojson anyway
+        # 2. the user_id, which doesn't need to be copied
+        # 3. the primary modes, which have not yet been populated
+        rename_cols = [c for c in constants.VALID_TRIP_COLS if c is not "user_id"]
+        # the mapping is `{distance: data.distance, duration: data.duration} etc
+        rename_mapping = dict(zip([c.replace("data.", "") for c in rename_cols], rename_cols))
+        logging.debug("Rename mapping is %s" % rename_mapping)
+        df.rename(columns=rename_mapping, inplace=True)
+        logging.debug("After renaming columns, they are %s" % df.columns)
+
+        # Now copy over the coordinates
+        df['data.start_loc.coordinates'] = df['start_loc'].apply(lambda g: g["coordinates"])
+        df['data.end_loc.coordinates'] = df['end_loc'].apply(lambda g: g["coordinates"])
+
+        # Add sensed, inferred and ble summaries. Note that we do this
+        # **before** filtering the `all_trip_columns` because the
+        # *_section_summary columns are not currently valid
+        get_max_mode_from_summary = lambda md: max(md["distance"], key=md["distance"].get) if len(md["distance"]) > 0 else "INVALID"
+        df["data.primary_sensed_mode"] = df.cleaned_section_summary.apply(get_max_mode_from_summary)
+        df["data.primary_predicted_mode"] = df.inferred_section_summary.apply(get_max_mode_from_summary)
+        if 'ble_sensed_summary' in df.columns:
+            df["data.primary_ble_sensed_mode"] = df.ble_sensed_summary.apply(get_max_mode_from_summary)
+        else:
+            logging.debug("No BLE support found, not fleet version, ignoring...")
         columns = [col for col in perm_utils.get_all_trip_columns() if col in df.columns]
         df = df[columns]
         # logging.debug("After getting all columns, they are %s" % df.columns)

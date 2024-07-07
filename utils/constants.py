@@ -24,6 +24,9 @@ VALID_TRIP_COLS = [
     "data.distance_meters",
     "data.start_loc.coordinates",
     "data.end_loc.coordinates",
+    "data.primary_sensed_mode",
+    "data.primary_predicted_mode",
+    "data.primary_ble_sensed_mode",
     "user_id"
 ]
 
@@ -31,6 +34,8 @@ BINARY_TRIP_COLS = [
     'user_id',
     'data.start_place',
     'data.end_place',
+    "cleaned_section_summary",
+    "inferred_section_summary",
 ]
 
 valid_uuids_columns = [
