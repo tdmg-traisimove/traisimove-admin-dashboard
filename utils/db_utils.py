@@ -82,7 +82,7 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
         # 1. the coordinates, which we will have to pull out from the geojson anyway
         # 2. the user_id, which doesn't need to be copied
         # 3. the primary modes, which have not yet been populated
-        rename_cols = [c for c in constants.VALID_TRIP_COLS if c is not "user_id"]
+        rename_cols = constants.VALID_TRIP_COLS
         # the mapping is `{distance: data.distance, duration: data.duration} etc
         rename_mapping = dict(zip([c.replace("data.", "") for c in rename_cols], rename_cols))
         logging.debug("Rename mapping is %s" % rename_mapping)
@@ -103,6 +103,10 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
             df["data.primary_ble_sensed_mode"] = df.ble_sensed_summary.apply(get_max_mode_from_summary)
         else:
             logging.debug("No BLE support found, not fleet version, ignoring...")
+
+        # Expand the user inputs
+        df = pd.concat([df, pd.json_normalize(df.user_input)], axis='columns')
+
         columns = [col for col in perm_utils.get_all_trip_columns() if col in df.columns]
         df = df[columns]
         # logging.debug("After getting all columns, they are %s" % df.columns)

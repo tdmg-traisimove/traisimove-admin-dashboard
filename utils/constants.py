@@ -6,9 +6,6 @@ REQUIRED_NAMED_COLS = [
 ]
 
 MULTILABEL_NAMED_COLS = [
-    {'label': 'mode_confirm', 'path': 'data.user_input.mode_confirm'},
-    {'label': 'purpose_confirm', 'path': 'data.user_input.purpose_confirm'},
-    {'label': 'replaced_mode', 'path': 'data.user_input.replaced_mode'},
 ]
 
 VALID_TRIP_COLS = [
@@ -27,6 +24,9 @@ VALID_TRIP_COLS = [
     "data.primary_sensed_mode",
     "data.primary_predicted_mode",
     "data.primary_ble_sensed_mode",
+    "mode_confirm",
+    "purpose_confirm",
+    "replaced_mode",
     "user_id"
 ]
 
