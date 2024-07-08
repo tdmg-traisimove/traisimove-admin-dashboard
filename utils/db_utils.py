@@ -79,10 +79,7 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
         # Since we use `get_data_df` instead of `pd.json_normalize`,
         # we lose the "data" prefix on the fields and they are only flattened one level
         # Here, we restore the prefix for the VALID_TRIP_COLS from constants.py
-        # for backwards compatibility. We do this for all columns EXCEPT:
-        # 1. the coordinates, which we will have to pull out from the geojson anyway
-        # 2. the user_id, which doesn't need to be copied
-        # 3. the primary modes, which have not yet been populated
+        # for backwards compatibility. We do this for all columns since columns which don't exist are ignored by the rename command.
         rename_cols = constants.VALID_TRIP_COLS
         # the mapping is `{distance: data.distance, duration: data.duration} etc
         rename_mapping = dict(zip([c.replace("data.", "") for c in rename_cols], rename_cols))
@@ -94,7 +91,7 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
         df['data.start_loc.coordinates'] = df['start_loc'].apply(lambda g: g["coordinates"])
         df['data.end_loc.coordinates'] = df['end_loc'].apply(lambda g: g["coordinates"])
 
-        # Add sensed, inferred and ble summaries. Note that we do this
+        # Add primary modes from the sensed, inferred and ble summaries. Note that we do this
         # **before** filtering the `all_trip_columns` because the
         # *_section_summary columns are not currently valid
         get_max_mode_from_summary = lambda md: max(md["distance"], key=md["distance"].get) if len(md["distance"]) > 0 else "INVALID"
