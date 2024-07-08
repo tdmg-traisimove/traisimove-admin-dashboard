@@ -24,9 +24,6 @@ VALID_TRIP_COLS = [
     "data.primary_sensed_mode",
     "data.primary_predicted_mode",
     "data.primary_ble_sensed_mode",
-    "mode_confirm",
-    "purpose_confirm",
-    "replaced_mode",
     "user_id"
 ]
 

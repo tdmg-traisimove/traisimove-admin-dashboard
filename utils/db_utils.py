@@ -72,6 +72,7 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
     df = ts.get_data_df("analysis/confirmed_trip",
         time_query=estt.TimeQuery("data.start_ts", start_ts, end_ts),
     )
+    user_input_cols = []
 
     logging.debug("Before filtering, df columns are %s" % df.columns)
     if not df.empty:
@@ -105,10 +106,22 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
             logging.debug("No BLE support found, not fleet version, ignoring...")
 
         # Expand the user inputs
-        df = pd.concat([df, pd.json_normalize(df.user_input)], axis='columns')
+        user_input_df = pd.json_normalize(df.user_input)
+        df = pd.concat([df, user_input_df], axis='columns')
+        logging.debug(f"Before filtering {user_input_df.columns=}")
+        user_input_cols = [c for c in user_input_df.columns
+            if "metadata" not in c and
+               "xmlns" not in c and
+               "local_dt" not in c and
+               'xmlResponse' not in c and
+               "_id" not in c]
+        logging.debug(f"After filtering {user_input_cols=}")
 
-        columns = [col for col in perm_utils.get_all_trip_columns() if col in df.columns]
+        combined_col_list = list(perm_utils.get_all_trip_columns()) + user_input_cols
+        logging.debug(f"Combined list {combined_col_list=}")
+        columns = [col for col in combined_col_list if col in df.columns]
         df = df[columns]
+        logging.debug(f"After filtering against the combined list {df.columns=}")
         # logging.debug("After getting all columns, they are %s" % df.columns)
         for col in constants.BINARY_TRIP_COLS:
             if col in df.columns:
@@ -140,7 +153,7 @@ def query_confirmed_trips(start_date: str, end_date: str, tz: str):
     # logging.debug("After filtering, df columns are %s" % df.columns)
     # logging.debug("After filtering, the actual data is %s" % df.head())
     # logging.debug("After filtering, the actual data is %s" % df.head().trip_start_time_str)
-    return df
+    return (df, user_input_cols)
 
 def query_demographics():
     # Returns dictionary of df where key represent differnt survey id and values are df for each survey
