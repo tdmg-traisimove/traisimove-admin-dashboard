@@ -19,6 +19,8 @@ import emission.core.get_database as edb
 
 from utils.permissions import has_permission
 from utils.datetime_utils import iso_to_date_only
+import emission.core.timer as ect
+import emission.storage.decorations.stats_queries as esdsq
 
 register_page(__name__, path="/")
 
@@ -52,60 +54,163 @@ layout = html.Div(
 
 
 def compute_sign_up_trend(uuid_df):
-    uuid_df['update_ts'] = pd.to_datetime(uuid_df['update_ts'], utc=True)
-    res_df = (
-        uuid_df
-        .groupby(uuid_df['update_ts'].dt.date)
-        .size()
-        .reset_index(name='count')
-        .rename(columns={'update_ts': 'date'})
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Convert 'update_ts' to datetime with UTC
+        with ect.Timer() as stage1_timer:
+            uuid_df['update_ts'] = pd.to_datetime(uuid_df['update_ts'], utc=True)
+        esdsq.store_dashboard_time(
+            "admin/home/compute_sign_up_trend/convert_to_datetime",
+            stage1_timer
+        )
+
+        # Stage 2: Group by date and calculate counts
+        with ect.Timer() as stage2_timer:
+            res_df = (
+                uuid_df
+                .groupby(uuid_df['update_ts'].dt.date)
+                .size()
+                .reset_index(name='count')
+                .rename(columns={'update_ts': 'date'})
+            )
+        esdsq.store_dashboard_time(
+            "admin/home/compute_sign_up_trend/group_by_and_calculate_counts",
+            stage2_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/compute_sign_up_trend/total_time",
+        total_timer
     )
+
     return res_df
+
 
 
 def compute_trips_trend(trips_df, date_col):
-    trips_df[date_col] = pd.to_datetime(trips_df[date_col], utc=True)
-    trips_df[date_col] = pd.DatetimeIndex(trips_df[date_col]).date
-    res_df = (
-        trips_df
-        .groupby(date_col)
-        .size()
-        .reset_index(name='count')
-        .rename(columns={date_col: 'date'})
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Convert 'date_col' to datetime with UTC
+        with ect.Timer() as stage1_timer:
+            trips_df[date_col] = pd.to_datetime(trips_df[date_col], utc=True)
+        esdsq.store_dashboard_time(
+            "admin/home/compute_trips_trend/convert_to_datetime",
+            stage1_timer
+        )
+
+        # Stage 2: Extract the date part from 'date_col'
+        with ect.Timer() as stage2_timer:
+            trips_df[date_col] = pd.DatetimeIndex(trips_df[date_col]).date
+        esdsq.store_dashboard_time(
+            "admin/home/compute_trips_trend/extract_date",
+            stage2_timer
+        )
+
+        # Stage 3: Group by date and calculate trip counts
+        with ect.Timer() as stage3_timer:
+            res_df = (
+                trips_df
+                .groupby(date_col)
+                .size()
+                .reset_index(name='count')
+                .rename(columns={date_col: 'date'})
+            )
+        esdsq.store_dashboard_time(
+            "admin/home/compute_trips_trend/group_by_and_calculate_counts",
+            stage3_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/compute_trips_trend/total_time",
+        total_timer
     )
+
     return res_df
 
 
+
 def find_last_get(uuid_list):
-    uuid_list = [UUID(npu) for npu in uuid_list]
-    last_item = list(edb.get_timeseries_db().aggregate([
-        {'$match': {'user_id': {'$in': uuid_list}}},
-        {'$match': {'metadata.key': 'stats/server_api_time'}},
-        {'$match': {'data.name': 'POST_/usercache/get'}},
-        {'$group': {'_id': '$user_id', 'write_ts': {'$max': '$metadata.write_ts'}}},
-    ]))
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Convert UUID strings to UUID objects
+        with ect.Timer() as stage1_timer:
+            uuid_list = [UUID(npu) for npu in uuid_list]
+        esdsq.store_dashboard_time(
+            "admin/home/find_last_get/convert_to_uuid_objects",
+            stage1_timer
+        )
+
+        # Stage 2: Query the timeseries database to find the last GET request
+        with ect.Timer() as stage2_timer:
+            last_item = list(edb.get_timeseries_db().aggregate([
+                {'$match': {'user_id': {'$in': uuid_list}}},
+                {'$match': {'metadata.key': 'stats/server_api_time'}},
+                {'$match': {'data.name': 'POST_/usercache/get'}},
+                {'$group': {'_id': '$user_id', 'write_ts': {'$max': '$metadata.write_ts'}}},
+            ]))
+        esdsq.store_dashboard_time(
+            "admin/home/find_last_get/query_timeseries_db",
+            stage2_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/find_last_get/total_time",
+        total_timer
+    )
+
     return last_item
 
 
+
 def get_number_of_active_users(uuid_list, threshold):
-    last_get_entries = find_last_get(uuid_list)
-    number_of_active_users = 0
-    for item in last_get_entries:
-        last_get = item['write_ts']
-        if last_get is not None:
-            last_call_diff = arrow.get().timestamp() - last_get
-            if last_call_diff <= threshold:
-                number_of_active_users += 1
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Find the last GET request entries for the given UUIDs
+        with ect.Timer() as stage1_timer:
+            last_get_entries = find_last_get(uuid_list)
+        esdsq.store_dashboard_time(
+            "admin/home/get_number_of_active_users/find_last_get_entries",
+            stage1_timer
+        )
+
+        # Stage 2: Calculate the number of active users based on the threshold
+        with ect.Timer() as stage2_timer:
+            number_of_active_users = 0
+            for item in last_get_entries:
+                last_get = item['write_ts']
+                if last_get is not None:
+                    last_call_diff = arrow.get().timestamp() - last_get
+                    if last_call_diff <= threshold:
+                        number_of_active_users += 1
+        esdsq.store_dashboard_time(
+            "admin/home/get_number_of_active_users/calculate_active_users",
+            stage2_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/get_number_of_active_users/total_time",
+        total_timer
+    )
+
     return number_of_active_users
 
 
+
 def generate_card(title_text, body_text, icon):
-    card = dbc.CardGroup([
-            dbc.Card(
-                dbc.CardBody(
-                    [
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Generate the card layout
+        with ect.Timer() as stage1_timer:
+            card = dbc.CardGroup([
+                dbc.Card(
+                    dbc.CardBody(
+                        [
                             html.H5(title_text, className="card-title"),
-                            html.P(body_text, className="card-text",),
+                            html.P(body_text, className="card-text"),
                         ]
                     )
                 ),
@@ -115,6 +220,17 @@ def generate_card(title_text, body_text, icon):
                     style={"maxWidth": 75},
                 ),
             ])
+        esdsq.store_dashboard_time(
+            "admin/home/generate_card/generate_card_layout",
+            stage1_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/generate_card/total_time",
+        total_timer
+    )
+
     return card
 
 
@@ -123,8 +239,30 @@ def generate_card(title_text, body_text, icon):
     Input('store-uuids', 'data'),
 )
 def update_card_users(store_uuids):
-    number_of_users = store_uuids.get('length') if has_permission('overview_users') else 0
-    card = generate_card("# Users", f"{number_of_users} users", "fa fa-users")
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Calculate number of users based on permission
+        with ect.Timer() as stage1_timer:
+            number_of_users = store_uuids.get('length') if has_permission('overview_users') else 0
+        esdsq.store_dashboard_time(
+            "update_card_users/calculate_number_of_users",
+            stage1_timer
+        )
+
+        # Stage 2: Generate the user card
+        with ect.Timer() as stage2_timer:
+            card = generate_card("# Users", f"{number_of_users} users", "fa fa-users")
+        esdsq.store_dashboard_time(
+            "update_card_users/generate_user_card",
+            stage2_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "update_card_users/total_time",
+        total_timer
+    )
+
     return card
 
 
@@ -133,13 +271,43 @@ def update_card_users(store_uuids):
     Input('store-uuids', 'data'),
 )
 def update_card_active_users(store_uuids):
-    uuid_df = pd.DataFrame(store_uuids.get('data'))
-    number_of_active_users = 0
-    if not uuid_df.empty and has_permission('overview_active_users'):
-        one_day = 24 * 60 * 60
-        number_of_active_users = get_number_of_active_users(uuid_df['user_id'], one_day)
-    card = generate_card("# Active users", f"{number_of_active_users} users", "fa fa-person-walking")
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Convert store_uuids data to DataFrame
+        with ect.Timer() as stage1_timer:
+            uuid_df = pd.DataFrame(store_uuids.get('data'))
+        esdsq.store_dashboard_time(
+            "admin/home/update_card_active_users/convert_to_dataframe",
+            stage1_timer
+        )
+
+        # Stage 2: Calculate number of active users if DataFrame is not empty and permission is granted
+        with ect.Timer() as stage2_timer:
+            number_of_active_users = 0
+            if not uuid_df.empty and has_permission('overview_active_users'):
+                one_day = 24 * 60 * 60
+                number_of_active_users = get_number_of_active_users(uuid_df['user_id'], one_day)
+        esdsq.store_dashboard_time(
+            "admin/home/update_card_active_users/calculate_active_users",
+            stage2_timer
+        )
+
+        # Stage 3: Generate the active users card
+        with ect.Timer() as stage3_timer:
+            card = generate_card("# Active users", f"{number_of_active_users} users", "fa fa-person-walking")
+        esdsq.store_dashboard_time(
+            "admin/home/update_card_active_users/generate_active_users_card",
+            stage3_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/update_card_active_users/total_time",
+        total_timer
+    )
+
     return card
+
 
 
 @callback(
@@ -147,17 +315,70 @@ def update_card_active_users(store_uuids):
     Input('store-trips', 'data'),
 )
 def update_card_trips(store_trips):
-    number_of_trips = store_trips.get('length') if has_permission('overview_trips') else 0
-    card = generate_card("# Confirmed trips", f"{number_of_trips} trips", "fa fa-angles-right")
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Calculate number of trips based on permission
+        with ect.Timer() as stage1_timer:
+            number_of_trips = store_trips.get('length') if has_permission('overview_trips') else 0
+        esdsq.store_dashboard_time(
+            "admin/home/update_card_trips/calculate_number_of_trips",
+            stage1_timer
+        )
+
+        # Stage 2: Generate the trips card
+        with ect.Timer() as stage2_timer:
+            card = generate_card("# Confirmed trips", f"{number_of_trips} trips", "fa fa-angles-right")
+        esdsq.store_dashboard_time(
+            "admin/home/update_card_trips/generate_trips_card",
+            stage2_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/update_card_trips/total_time",
+        total_timer
+    )
+
     return card
 
 
+
 def generate_barplot(data, x, y, title):
-    fig = px.bar()
-    if data is not None:
-        fig = px.bar(data, x=x, y=y)
-    fig.update_layout(title=title)
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Initialize an empty bar plot
+        with ect.Timer() as stage1_timer:
+            fig = px.bar()
+        esdsq.store_dashboard_time(
+            "admin/home/generate_barplot/initialize_empty_barplot",
+            stage1_timer
+        )
+
+        # Stage 2: Generate the bar plot if data is provided
+        with ect.Timer() as stage2_timer:
+            if data is not None:
+                fig = px.bar(data, x=x, y=y)
+        esdsq.store_dashboard_time(
+            "admin/home/generate_barplot/generate_barplot_with_data",
+            stage2_timer
+        )
+
+        # Stage 3: Update the layout with the provided title
+        with ect.Timer() as stage3_timer:
+            fig.update_layout(title=title)
+        esdsq.store_dashboard_time(
+            "admin/home/generate_barplot/update_layout_with_title",
+            stage3_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/generate_barplot/total_time",
+        total_timer
+    )
+
     return fig
+
 
 
 @callback(
@@ -165,25 +386,91 @@ def generate_barplot(data, x, y, title):
     Input('store-uuids', 'data'),
 )
 def generate_plot_sign_up_trend(store_uuids):
-    df = pd.DataFrame(store_uuids.get("data"))
-    trend_df = None
-    if not df.empty and has_permission('overview_signup_trends'):
-        trend_df = compute_sign_up_trend(df)
-    fig = generate_barplot(trend_df, x = 'date', y = 'count', title = "Sign-ups trend")
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Convert store_uuids data to DataFrame
+        with ect.Timer() as stage1_timer:
+            df = pd.DataFrame(store_uuids.get("data"))
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_sign_up_trend/convert_to_dataframe",
+            stage1_timer
+        )
+
+        # Stage 2: Compute the sign-up trend if permission is granted
+        with ect.Timer() as stage2_timer:
+            trend_df = None
+            if not df.empty and has_permission('overview_signup_trends'):
+                trend_df = compute_sign_up_trend(df)
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_sign_up_trend/compute_sign_up_trend",
+            stage2_timer
+        )
+
+        # Stage 3: Generate the bar plot for the sign-up trend
+        with ect.Timer() as stage3_timer:
+            fig = generate_barplot(trend_df, x='date', y='count', title="Sign-ups trend")
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_sign_up_trend/generate_barplot",
+            stage3_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/generate_plot_sign_up_trend/total_time",
+        total_timer
+    )
+
     return fig
 
 
 @callback(
     Output('fig-trips-trend', 'figure'),
     Input('store-trips', 'data'),
-    Input('date-picker', 'start_date'), # these are ISO strings
-    Input('date-picker', 'end_date'), # these are ISO strings
+    Input('date-picker', 'start_date'),  # these are ISO strings
+    Input('date-picker', 'end_date'),  # these are ISO strings
 )
 def generate_plot_trips_trend(store_trips, start_date, end_date):
-    df = pd.DataFrame(store_trips.get("data"))
-    trend_df = None
-    (start_date, end_date) = iso_to_date_only(start_date, end_date)
-    if not df.empty and has_permission('overview_trips_trend'):
-        trend_df = compute_trips_trend(df, date_col = "trip_start_time_str")
-    fig = generate_barplot(trend_df, x = 'date', y = 'count', title = f"Trips trend({start_date} to {end_date})")
+    with ect.Timer() as total_timer:
+
+        # Stage 1: Convert store_trips data to DataFrame
+        with ect.Timer() as stage1_timer:
+            df = pd.DataFrame(store_trips.get("data"))
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_trips_trend/convert_to_dataframe",
+            stage1_timer
+        )
+
+        # Stage 2: Convert ISO strings to date-only format
+        with ect.Timer() as stage2_timer:
+            (start_date, end_date) = iso_to_date_only(start_date, end_date)
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_trips_trend/convert_iso_to_date_only",
+            stage2_timer
+        )
+
+        # Stage 3: Compute the trips trend if permission is granted
+        with ect.Timer() as stage3_timer:
+            trend_df = None
+            if not df.empty and has_permission('overview_trips_trend'):
+                trend_df = compute_trips_trend(df, date_col="trip_start_time_str")
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_trips_trend/compute_trips_trend",
+            stage3_timer
+        )
+
+        # Stage 4: Generate the bar plot for the trips trend
+        with ect.Timer() as stage4_timer:
+            fig = generate_barplot(trend_df, x='date', y='count', title=f"Trips trend ({start_date} to {end_date})")
+        esdsq.store_dashboard_time(
+            "admin/home/generate_plot_trips_trend/generate_barplot",
+            stage4_timer
+        )
+
+    # Store the total time for the entire function
+    esdsq.store_dashboard_time(
+        "admin/home/generate_plot_trips_trend/total_time",
+        total_timer
+    )
+
     return fig
+
