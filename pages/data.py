@@ -31,7 +31,6 @@ layout = html.Div(
         ]),
         html.Div(id='tabs-content'),
         dcc.Store(id='selected-tab', data='tab-uuids-datatable'),  # Store to hold selected tab
-        dcc.Store(id='store-uuids', data=[]),  # Store to hold the original UUIDs data
         dcc.Store(id='loaded-uuids-stats', data=[]),
         dcc.Store(id='all-uuids-stats-loaded', data=False),
         dcc.Store(id='uuids-page-current', data=0),  # Store to track current page for UUIDs DataTable
