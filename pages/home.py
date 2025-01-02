@@ -142,14 +142,20 @@ def find_last_get(uuid_list):
             stage1_timer
         )
 
-        # Stage 2: Query the timeseries database to find the last GET request
+        # Stage 2: Fetch profile data and assign last_call
         with ect.Timer() as stage2_timer:
-            last_item = list(edb.get_timeseries_db().aggregate([
-                {'$match': {'user_id': {'$in': uuid_list}}},
-                {'$match': {'metadata.key': 'stats/server_api_time'}},
-                {'$match': {'data.name': 'POST_/usercache/get'}},
-                {'$group': {'_id': '$user_id', 'write_ts': {'$max': '$metadata.write_ts'}}},
-            ]))
+            last_item = []
+            for user_uuid in uuid_list:
+                user_dict = {'user_id': str(user_uuid)}
+                profile_data = edb.get_profile_db().find_one({'user_id': user_uuid})
+                print(f'profile_data: {profile_data}')
+                if profile_data:
+                    # Retrieve and assign last API call timestamp
+                    last_call_ts = profile_data.get('last_call_ts')
+                    if last_call_ts:
+                        user_dict['write_ts'] = arrow.get(last_call_ts).timestamp()
+                last_item.append(user_dict)
+
         esdsq.store_dashboard_time(
             "admin/home/find_last_get/query_timeseries_db",
             stage2_timer
@@ -179,10 +185,12 @@ def get_number_of_active_users(uuid_list, threshold):
         # Stage 2: Calculate the number of active users based on the threshold
         with ect.Timer() as stage2_timer:
             number_of_active_users = 0
+            current_timestamp = arrow.utcnow().timestamp()
             for item in last_get_entries:
-                last_get = item['write_ts']
+                last_get = item.get('write_ts')
+                print(f'last_get: {last_get}')
                 if last_get is not None:
-                    last_call_diff = arrow.get().timestamp() - last_get
+                    last_call_diff = current_timestamp - last_get
                     if last_call_diff <= threshold:
                         number_of_active_users += 1
         esdsq.store_dashboard_time(
