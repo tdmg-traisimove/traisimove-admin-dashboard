@@ -1,9 +1,10 @@
+# data.py
 """
 Note that the callback will trigger even if prevent_initial_call=True. This is because dcc.Location must be in app.py.
 Since the dcc.Location component is not in the layout when navigating to this page, it triggers the callback.
 The workaround is to check if the input value is None.
 """
-from dash import dcc, html, Input, Output, callback, register_page, State, set_props
+from dash import dcc, html, Input, Output, callback, register_page, State, set_props, MATCH
 import dash_ag_grid as dag
 # Etc
 import logging
@@ -17,6 +18,7 @@ from utils.db_utils import df_to_filtered_records, query_trajectories
 from utils.datetime_utils import iso_to_date_only
 import emission.core.timer as ect
 import emission.storage.decorations.stats_queries as esdsq
+from utils.ux_utils import skeleton
 register_page(__name__, path="/data")
 
 intro = """## Data"""
@@ -146,10 +148,6 @@ def show_keylist_switch(tab):
     ],
 )
 def load_uuids_stats(tab, uuids):
-    logging.debug("loading uuids stats for tab %s" % tab)
-    if tab != 'tab-uuids-datatable':
-        return
-    
     # slice uuids into chunks of 10
     uuids_chunks = [uuids['data'][i:i+10] for i in range(0, len(uuids['data']), 10)]
     loaded_stats = []
@@ -200,10 +198,7 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                 else:
                     if df.empty and len(store_uuids['data']) > 0:
                         logging.debug(f"Callback - {selected_tab} loaded_uuids is empty.")
-                        content = html.Div(
-                            [dcc.Loading(id='uuids-loading', display='show')],
-                            style={'margin-top': '36px'}
-                        )
+                        content = skeleton(500)
                     else:
                         df = df.drop(columns=[col for col in df.columns if col not in columns])
                         logging.debug(f"Callback - {selected_tab} Stage 5: Returning appended data to update the UI.")
@@ -234,9 +229,18 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                 has_perm = perm_utils.has_permission('data_trips')
 
                 df = pd.DataFrame(data)
-                if df.empty or not has_perm:
-                    logging.debug(f"Callback - {selected_tab} Error Stage: No data available or permission issues.")
-                    content = None
+                if df.empty and has_perm:
+                    logging.debug(f"Callback - {selected_tab} loaded_trips is empty.")
+                    content = html.Div(
+                        [
+                            html.Div("No data available", style={'text-align': 'center', 'margin-bottom': '16px'}),
+                        ],
+                        style={'margin-top': '36px'}
+                    )
+
+                elif not has_perm:
+                    logging.debug(f"Callback - {selected_tab} Error Stage: No permission or no data available.")
+                    content = html.Div([html.P("No data available or you don't have permission.")])
                 else:
                     df = df.drop(columns=[col for col in df.columns if col not in columns])
                     df = clean_location_data(df)
@@ -247,7 +251,6 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                         html.Button('Display columns with raw units', id='button-clicked', n_clicks=0, style={'marginLeft': '5px'}),
                         trips_table
                     ])
-
             # Store timing after handling Trips tab
             esdsq.store_dashboard_time(
                 "admin/data/render_content/handle_trips_tab",
@@ -266,12 +269,12 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                     columns = list(data[0].keys()) if data else []
                     df = pd.DataFrame(data)
                     if df.empty:
-                        content = None
+                        content = skeleton(500)
                     else:
                         content = populate_datatable(df, store_uuids)
                 elif len(data) > 1:
                     if not has_perm:
-                        content = None
+                        content = skeleton(100)
                     else:
                         content = html.Div([
                             dcc.Tabs(id='subtabs-demographics', value=list(data.keys())[0], children=[
@@ -313,7 +316,12 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
 
                         content = datatable
                 else:
-                    content = None
+                    content = html.Div(
+                        [
+                            html.Div("No data available", style={'text-align': 'center', 'margin-bottom': '16px'}),
+                        ],
+                        style={'margin-top': '36px'}
+                    )
 
             # Store timing after handling Trajectories tab
             esdsq.store_dashboard_time(
@@ -433,7 +441,7 @@ def update_dropdowns_trips(n_clicks, button_label):
 
 def populate_datatable(df, store_uuids, table_id=''):
     with ect.Timer() as total_timer:
-
+        df.fillna("N/A", inplace=True)
         # Stage 1: Check if df is a DataFrame and raise PreventUpdate if not
         with ect.Timer() as stage1_timer:
             if not isinstance(df, pd.DataFrame):
@@ -442,29 +450,43 @@ def populate_datatable(df, store_uuids, table_id=''):
             "admin/data/populate_datatable/check_dataframe_type",
             stage1_timer
         )
-
         if 'user_token' not in df.columns:
             uuids_df = pd.DataFrame(store_uuids['data'])
-            df.insert(
-                uuids_df.columns.get_loc('user_id'),
-                'user_token',
-                df['user_id'].map(uuids_df.set_index('user_id')['user_token'])
-            )
-
+            user_id_col = 'data.user_id' if 'data.user_id' in df.columns else 'user_id'
+            if user_id_col in df.columns:
+                user_id_token_map = uuids_df.set_index(user_id_col)['user_token']
+                df.insert(
+                    uuids_df.columns.get_loc('user_id'),
+                    'user_token',
+                    df[user_id_col].map(user_id_token_map)
+                )
         # Stage 2: Create the DataTable from the DataFrame
         with ect.Timer() as stage2_timer:
-            result = dag.AgGrid(
-                id=table_id,
+            # Ag Grid does not allow . in column names; replace with _
+            # before creating the DataTable
+            df.columns = [col.replace('.', '_') for col in df.columns]
+            result = html.Div([
+              dag.AgGrid(
+                id={'type': 'data_table', 'id': table_id},
                 rowData=df.to_dict('records'),
                 columnDefs=[{"field": i, "headerName": i} for i in df.columns],
-                dashGridOptions={"pagination": True, "enableCellTextSelection": True,},
-                columnSize="autoSize",
                 defaultColDef={ "sortable": True, "filter": True },
+                columnSize="autoSize",
+                dashGridOptions={
+                    "pagination": True,
+                    "paginationPageSize": 50,
+                    "enableCellTextSelection": True,
+                },
                 style={
                     "--ag-font-family": "monospace",
-                    "height": "600px"
+                    "height": "600px",
                 },
-            )
+              ),
+              html.Button(
+                  "Download CSV",
+                  id={"type": "download-csv-btn", "id": table_id},
+              ),
+            ])
         esdsq.store_dashboard_time(
             "admin/data/populate_datatable/create_datatable",
             stage2_timer
@@ -476,4 +498,15 @@ def populate_datatable(df, store_uuids, table_id=''):
     )
     return result
 
+
+@callback(
+    Output({"type": "data_table", "id": MATCH}, "exportDataAsCsv"),
+    Output({"type": "download-csv-btn", "id": MATCH}, "csvExportParams"),
+    Output({"type": "download-csv-btn", "id": MATCH}, "n_clicks"),
+    Input({"type": "download-csv-btn", "id": MATCH}, "n_clicks"),
+)
+def export_table_as_csv(n_clicks):
+    if not n_clicks:
+        raise PreventUpdate
+    return True, {"fileName": "tokens-table.csv"}, 0
 
