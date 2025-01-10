@@ -15,8 +15,10 @@ import arrow
 import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html, Dash, DiskcacheManager
+import dash_mantine_components as dmc
 import dash_auth
 import logging
+import base64
 import base64
 # Set the logging right at the top to make sure that debug
 # logs are displayed in dev mode
@@ -28,6 +30,7 @@ from utils.datetime_utils import iso_to_date_only
 from utils.db_utils import df_to_filtered_records, query_uuids, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission, config
 import flask_talisman as flt
+from dash.long_callback import DiskcacheLongCallbackManager
 
 
 OPENPATH_LOGO = os.path.join(os.getcwd(), "assets/openpath-logo.jpg")
@@ -248,15 +251,22 @@ def make_home_page(): return [
 ]
 
 
-def make_layout(): return html.Div([
-    dcc.Location(id='url', refresh=False),
-    dcc.Store(id='store-trips', data={}),
-    dcc.Store(id='store-uuids', data={}),
-    dcc.Store(id='store-excluded-uuids', data={}), # list of UUIDs from excluded subgroups
-    dcc.Store(id='store-demographics', data={}),
-    dcc.Store(id='store-trajectories', data={}),
-    html.Div(id='page-content', children=make_home_page()),
-])
+def make_layout():
+    return dmc.MantineProvider(
+        theme={'colorScheme': 'light'},  # Optional: Customize theme
+        children=[
+            html.Div([
+                dcc.Location(id='url', refresh=False),
+                dcc.Store(id='store-trips', data={}),
+                dcc.Store(id='store-uuids', data={}),
+                dcc.Store(id='store-excluded-uuids', data={}),  # list of UUIDs from excluded subgroups
+                dcc.Store(id='store-demographics', data={}),
+                dcc.Store(id='store-trajectories', data={}),
+                html.Div(id='page-content', children=make_home_page()),
+            ])
+        ]
+    )
+
 app.layout = make_layout
 
 # make the 'filters' menu collapsible
