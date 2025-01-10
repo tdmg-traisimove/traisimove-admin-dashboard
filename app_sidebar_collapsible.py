@@ -45,8 +45,9 @@ elif auth_type == 'basic':
 # diskcache manager; required for 'background' callbacks
 # https: // dash.plotly.com/background-callbacks
 import diskcache
+
 cache = diskcache.Cache("./cache")
-background_callback_manager = DiskcacheManager(cache)
+background_callback_manager = DiskcacheLongCallbackManager(cache)
 
 app = Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
