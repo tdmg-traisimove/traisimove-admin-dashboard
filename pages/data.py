@@ -32,7 +32,7 @@ layout = html.Div(
             dcc.Tab(label='Demographics', value='tab-demographics-datatable'),
             dcc.Tab(label='Trajectories', value='tab-trajectories-datatable'),
         ]),
-        html.Div(id='tabs-content'),
+        html.Div(id='tabs-content', style={'margin': '12px '}),
         dcc.Store(id='selected-tab', data='tab-uuids-datatable'),  # Store to hold selected tab
         dcc.Store(id='loaded-uuids-stats', data=[]),
         dcc.Store(id='all-uuids-stats-loaded', data=False),
@@ -203,7 +203,7 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                         df = df.drop(columns=[col for col in df.columns if col not in columns])
                         logging.debug(f"Callback - {selected_tab} Stage 5: Returning appended data to update the UI.")
                         content = html.Div([
-                            populate_datatable(df, store_uuids, table_id='uuid-table'),  # Pass current_page
+                            populate_datatable(df, store_uuids, 'uuids'),
                             html.P(
                                 f"Showing {len(loaded_uuids)} of {len(store_uuids['data'])} UUIDs." +
                                 (f" Loading {initial_batch_size} more..." if len(loaded_uuids) < len(store_uuids['data']) else ""),
@@ -245,7 +245,7 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                     df = df.drop(columns=[col for col in df.columns if col not in columns])
                     df = clean_location_data(df)
 
-                    trips_table = populate_datatable(df, store_uuids, table_id='trips-datatable')
+                    trips_table = populate_datatable(df, store_uuids, 'trips')
 
                     content = html.Div([
                         html.Button('Display columns with raw units', id='button-clicked', n_clicks=0, style={'marginLeft': '5px'}),
@@ -271,7 +271,7 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                     if df.empty:
                         content = skeleton(500)
                     else:
-                        content = populate_datatable(df, store_uuids)
+                        content = populate_datatable(df, store_uuids, 'demographics')
                 elif len(data) > 1:
                     if not has_perm:
                         content = skeleton(100)
@@ -312,7 +312,7 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                     else:
                         df = df.drop(columns=[col for col in df.columns if col not in columns])
 
-                        datatable = populate_datatable(df, store_uuids)
+                        datatable = populate_datatable(df, store_uuids, 'trajectories')
 
                         content = datatable
                 else:
@@ -392,7 +392,7 @@ def update_sub_tab(tab, store_demographics, store_uuids):
 
         # Stage 4: Populate the datatable with the cleaned DataFrame
         with ect.Timer() as stage4_timer:
-            result = populate_datatable(df, store_uuids)
+            result = populate_datatable(df, store_uuids, 'demographics')
         esdsq.store_dashboard_time(
             "admin/data/update_sub_tab/populate_datatable",
             stage4_timer
@@ -407,22 +407,28 @@ def update_sub_tab(tab, store_demographics, store_uuids):
     return result
 
 @callback(
-    Output('trips-datatable', 'hidden_columns'),  # Output hidden columns in the trips-table
+    Output({'type': 'data_table', 'id': 'trips'}, 'columnDefs'),
     Output('button-clicked', 'children'),  # Updates button label
     Input('button-clicked', 'n_clicks'),  # Number of clicks on the button
-    State('button-clicked', 'children')  # State representing the current label of button
+    State({'type': 'data_table', 'id': 'trips'}, 'columnDefs'),
 )
 # Controls visibility of columns in trips table and updates the label of button based on the number of clicks.
-def update_dropdowns_trips(n_clicks, button_label):
+def update_raw_vs_humanized_units(n_clicks, columnDefs):
     with ect.Timer() as total_timer:
+        humanized_cols = ['data_duration', 'data_distance_miles', 'data_distance_km']
+        raw_cols = ['data_duration_seconds', 'data_distance_meters', 'data_distance']
 
         # Stage 1: Determine hidden columns and button label based on number of clicks
         with ect.Timer() as stage1_timer:
             if n_clicks % 2 == 0:
-                hidden_col = ["data.duration_seconds", "data.distance_meters", "data.distance"]
+                columnDefs = [{**col, 'hide': True} if col['field'] in raw_cols
+                              else {**col, 'hide': False}
+                              for col in columnDefs]
                 button_label = 'Display columns with raw units'
             else:
-                hidden_col = ["data.duration", "data.distance_miles", "data.distance_km", "data.distance"]
+                columnDefs = [{**col, 'hide': True} if col['field'] in humanized_cols
+                              else {**col, 'hide': False}
+                              for col in columnDefs]
                 button_label = 'Display columns with humanized units'
         esdsq.store_dashboard_time(
             "admin/data/update_dropdowns_trips/determine_hidden_columns_and_label",
@@ -436,10 +442,10 @@ def update_dropdowns_trips(n_clicks, button_label):
     )
 
     # Return the list of hidden columns and the updated button label
-    return hidden_col, button_label
+    return columnDefs, button_label
 
 
-def populate_datatable(df, store_uuids, table_id=''):
+def populate_datatable(df, store_uuids, table_id):
     with ect.Timer() as total_timer:
         df.fillna("N/A", inplace=True)
         # Stage 1: Check if df is a DataFrame and raise PreventUpdate if not
