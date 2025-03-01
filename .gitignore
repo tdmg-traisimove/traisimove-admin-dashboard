@@ -4,3 +4,5 @@ __pycache__
 assets/qrcodes
 data/tokens.csv
 config.py
+
+docker-compose.yaml
