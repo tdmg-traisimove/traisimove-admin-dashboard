@@ -22,6 +22,8 @@ WORKDIR /usr/src/app/utils
 COPY ./utils ./
 WORKDIR /usr/src/app
 COPY app.py app_sidebar_collapsible.py globals.py globalsUpdater.py Procfile ./
+# Copy config.py without crashing if it doesn't exist
+COPY config.py* ./
 
 WORKDIR /usr/src/app/assets
 COPY assets/ ./
