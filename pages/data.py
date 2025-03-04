@@ -135,31 +135,6 @@ def show_keylist_switch(tab):
 
 
 @callback(
-    Output('all-uuids-stats-loaded', 'data'),
-    Input('tabs-datatable', 'value'),
-    Input('store-uuids', 'data'),
-    background=True,
-    # hide the global spinner while callback is running
-    running=[Output('global-loading', 'display'), 'hide', 'auto'],
-    # if page changes or tab changes while callback is running, cancel
-    cancel=[
-        Input('url', 'pathname'),
-        Input('tabs-datatable', 'value')
-    ],
-)
-def load_uuids_stats(tab, uuids):
-    # slice uuids into chunks of 10
-    uuids_chunks = [uuids['data'][i:i+10] for i in range(0, len(uuids['data']), 10)]
-    loaded_stats = []
-    for uuids in uuids_chunks:
-        processed_uuids = db_utils.add_user_stats(uuids, 10)
-        loaded_stats.extend(processed_uuids)
-        logging.debug("loaded %s uuids stats: %s" % (len(loaded_stats), loaded_stats))
-        set_props('loaded-uuids-stats', {'data': loaded_stats})
-    return True
-
-
-@callback(
     Output('tabs-content', 'children'),
     Input('tabs-datatable', 'value'),
     Input('store-uuids', 'data'),

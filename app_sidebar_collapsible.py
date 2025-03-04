@@ -14,7 +14,7 @@ import arrow
 
 import dash
 import dash_bootstrap_components as dbc
-from dash import Input, Output, dcc, html, Dash, DiskcacheManager
+from dash import Input, Output, dcc, html, Dash
 import dash_mantine_components as dmc
 import dash_auth
 import asyncio
@@ -35,7 +35,6 @@ from utils.datetime_utils import iso_to_date_only
 from utils.db_utils import df_to_filtered_records, query_uuids, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission, config
 import flask_talisman as flt
-from dash.long_callback import DiskcacheLongCallbackManager
 
 
 OPENPATH_LOGO = os.path.join(os.getcwd(), "assets/openpath-logo.jpg")
@@ -50,18 +49,18 @@ elif auth_type == 'basic':
         'hello': 'world'
     }
 
-# diskcache manager; required for 'background' callbacks
-# https: // dash.plotly.com/background-callbacks
-import diskcache
+# # diskcache manager; required for 'background' callbacks
+# # https: // dash.plotly.com/background-callbacks
+# import diskcache
 
-cache = diskcache.Cache("./cache")
-background_callback_manager = DiskcacheLongCallbackManager(cache)
+# cache = diskcache.Cache("./cache")
+# background_callback_manager = DiskcacheLongCallbackManager(cache)
 
 app = Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
     suppress_callback_exceptions=True,
     use_pages=True,
-    background_callback_manager=background_callback_manager
+    # background_callback_manager=background_callback_manager
 )
 server = app.server  # expose server variable for Procfile
 
@@ -365,8 +364,8 @@ def update_store_trips(start_date, end_date, timezone, excluded_uuids):
 @app.callback(
     Output('store-label-options', 'data'),
     Input('store-label-options', 'data'),
-    background=True,
-    cancel=[Input("_pages_location", "pathname")],
+    # background=True,
+    # cancel=[Input("_pages_location", "pathname")],
 )
 def load_label_options(_):
     config = eacd.get_dynamic_config()
