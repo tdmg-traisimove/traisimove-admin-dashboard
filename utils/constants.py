@@ -44,10 +44,10 @@ VALID_UUIDS_COLS = [
     'first_trip',
     'last_trip',
     'last_call',
-    'platform',
+    'curr_platform',
     'manufacturer',
-    'app_version',
-    'os_version',
+    'client_app_version',
+    'client_os_version',
     'phone_lang',
 ]
 

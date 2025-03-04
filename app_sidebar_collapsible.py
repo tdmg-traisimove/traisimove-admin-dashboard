@@ -32,7 +32,7 @@ import emission.analysis.configs.dynamic_config as eacd
 import emcommon.util as emcu
 
 from utils.datetime_utils import iso_to_date_only
-from utils.db_utils import df_to_filtered_records, query_uuids, query_confirmed_trips, query_demographics
+from utils.db_utils import df_to_filtered_records, query_users, query_confirmed_trips, query_demographics
 from utils.permissions import has_permission, config
 import flask_talisman as flt
 
@@ -298,18 +298,18 @@ def toggle_collapse_filters(n, is_open):
 )
 def update_store_uuids(start_date, end_date, timezone, excluded_subgroups):
     (start_date, end_date) = iso_to_date_only(start_date, end_date)
-    dff = query_uuids(start_date, end_date, timezone)
-    if dff.empty:
+    users_df = query_users()
+    if users_df.empty:
         return {"data": [], "length": 0}, {"data": [], "length": 0}
     
     # if any subgroups are excluded, find UUIDs in those subgroups and output
     # a list to store-excluded-uuids so that other callbacks can exclude them too
     excluded_uuids_list = []
     for subgroup in excluded_subgroups:
-        uuids_in_subgroup = dff[dff['user_token'].str.contains(f"_{subgroup}_")]['user_id'].tolist()
+        uuids_in_subgroup = users_df[users_df['user_token'].str.contains(f"_{subgroup}_")]['user_id'].tolist()
         excluded_uuids_list.extend(uuids_in_subgroup)
 
-    records = df_to_filtered_records(dff, 'user_id', excluded_uuids_list)
+    records = df_to_filtered_records(users_df, 'user_id', excluded_uuids_list)
     store_uuids = {
         "data": records,
         "length": len(records),

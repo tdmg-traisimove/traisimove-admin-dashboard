@@ -6,7 +6,7 @@ The workaround is to check if the input value is None.
 """
 from dash import dcc, html, Input, Output, callback, register_page, State, set_props, MATCH
 import dash_ag_grid as dag
-# Etc
+import arrow
 import logging
 import pandas as pd
 from dash.exceptions import PreventUpdate
@@ -36,7 +36,6 @@ layout = html.Div(
         dcc.Store(id='selected-tab', data='tab-uuids-datatable'),  # Store to hold selected tab
         dcc.Store(id='loaded-uuids-stats', data=[]),
         dcc.Store(id='all-uuids-stats-loaded', data=False),
-        dcc.Store(id='uuids-page-current', data=0),  # Store to track current page for UUIDs DataTable
         # RadioItems for key list switch, wrapped in a div that can hide/show
         html.Div(
             id='keylist-switch-container',
@@ -146,13 +145,9 @@ def show_keylist_switch(tab):
     Input('date-picker', 'end_date'),
     Input('date-picker-timezone', 'value'),
     Input('keylist-switch', 'value'),  # Add keylist-switch to trigger data refresh on change
-    Input('uuids-page-current', 'data'),  # Current page number for UUIDs DataTable
-    Input('loaded-uuids-stats', 'data'),
 )
-def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date, timezone, key_list, current_page, loaded_uuids):
+def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_demographics, store_trajectories, start_date, end_date, timezone, key_list):
     with ect.Timer() as total_timer:
-        initial_batch_size = 10  # Define the batch size for loading UUIDs
-
         # Stage 1: Update selected tab
         selected_tab = tab
         logging.debug(f"Callback - {selected_tab} Stage 1: Selected tab updated.")
@@ -165,26 +160,26 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
             with ect.Timer() as handle_uuids_timer:
                 # Prepare the data to be displayed
                 columns = perm_utils.get_uuids_columns()  # Get the relevant columns
-                df = pd.DataFrame(loaded_uuids)
+                users_df = pd.DataFrame(store_uuids['data'])
 
-                if not perm_utils.has_permission('data_uuids'):
+                if users_df.empty or not perm_utils.has_permission('data_uuids'):
                     logging.debug(f"Callback - {selected_tab} insufficient permission.")
                     content = html.Div([html.P("No data available or you don't have permission.")])
                 else:
-                    if df.empty and len(store_uuids['data']) > 0:
-                        logging.debug(f"Callback - {selected_tab} loaded_uuids is empty.")
-                        content = skeleton(500)
-                    else:
-                        df = df.drop(columns=[col for col in df.columns if col not in columns])
-                        logging.debug(f"Callback - {selected_tab} Stage 5: Returning appended data to update the UI.")
-                        content = html.Div([
-                            populate_datatable(df, store_uuids, 'uuids'),
-                            html.P(
-                                f"Showing {len(loaded_uuids)} of {len(store_uuids['data'])} UUIDs." +
-                                (f" Loading {initial_batch_size} more..." if len(loaded_uuids) < len(store_uuids['data']) else ""),
-                                style={'margin': '15px 5px'}
-                            )
-                        ])
+                    def format_date(ts):
+                        if pd.isna(ts): return ''
+                        return arrow.get(ts).format('YYYY-MM-DD HH:mm:ss')
+                    users_df['first_trip'] = users_df['pipeline_range.start_ts'].apply(format_date)
+                    users_df['last_trip'] = users_df['pipeline_range.end_ts'].apply(format_date)
+                    users_df['last_call'] = users_df['last_call_ts'].apply(format_date)
+                    users_df.drop(columns=[c for c in users_df.columns if c not in columns],
+                                  inplace=True)
+                    logging.debug(f"Callback - {selected_tab} Stage 5: Returning appended data to update the UI.")
+                    content = html.Div([
+                        populate_datatable(users_df, store_uuids, 'uuids'),
+                        html.P(f"Showing {len(store_uuids['data'])} UUIDs.",
+                                style={'margin': '15px 5px'})
+                    ])
 
             # Store timing after handling UUIDs tab
             esdsq.store_dashboard_time(
@@ -435,7 +430,7 @@ def populate_datatable(df, store_uuids, table_id):
             uuids_df = pd.DataFrame(store_uuids['data'])
             user_id_col = 'data.user_id' if 'data.user_id' in df.columns else 'user_id'
             if user_id_col in df.columns:
-                user_id_token_map = uuids_df.set_index(user_id_col)['user_token']
+                user_id_token_map = uuids_df.set_index(user_id_col)['user_token'].to_dict()
                 df.insert(
                     uuids_df.columns.get_loc('user_id'),
                     'user_token',
