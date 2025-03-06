@@ -191,9 +191,8 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                 logging.debug(f"Callback - {selected_tab} Stage 2: Handling Trips tab.")
 
                 data = store_trips.get("data", [])
-                columns = perm_utils.get_allowed_trip_columns()
-                columns.update(col['label'] for col in perm_utils.get_allowed_named_trip_columns())
-                columns.update(store_trips.get("userinputcols", []))
+                columns = perm_utils.get_all_trip_columns()
+                columns.extend(store_trips.get("userinputcols", []))
                 has_perm = perm_utils.has_permission('data_trips')
 
                 df = pd.DataFrame(data)
@@ -428,9 +427,9 @@ def populate_datatable(df, store_uuids, table_id):
             uuids_df = pd.DataFrame(store_uuids['data'])
             user_id_col = 'data.user_id' if 'data.user_id' in df.columns else 'user_id'
             if user_id_col in df.columns:
-                user_id_token_map = uuids_df.set_index(user_id_col)['user_token'].to_dict()
+                user_id_token_map = uuids_df.set_index('user_id')['user_token'].to_dict()
                 df.insert(
-                    uuids_df.columns.get_loc('user_id'),
+                    df.columns.get_loc(user_id_col),
                     'user_token',
                     df[user_id_col].map(user_id_token_map)
                 )

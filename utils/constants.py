@@ -9,6 +9,7 @@ MULTILABEL_NAMED_COLS = [
 ]
 
 VALID_TRIP_COLS = [
+    "user_id",
     "data.start_local_dt",
     "data.start_fmt_time",
     "data.end_local_dt",
@@ -24,7 +25,6 @@ VALID_TRIP_COLS = [
     "data.primary_sensed_mode",
     "data.primary_predicted_mode",
     "data.primary_ble_sensed_mode",
-    "user_id"
 ]
 
 BINARY_TRIP_COLS = [
