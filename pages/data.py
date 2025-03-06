@@ -172,6 +172,11 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                         if col.endswith('_ts'):
                             users_df[col] = users_df[col].apply(ts_to_iso)
 
+                    if 'total_trips' in users_df.columns and 'labeled_trips' in users_df.columns:
+                        loc = users_df.columns.get_loc('labeled_trips') + 1
+                        pct = (users_df['labeled_trips'] / users_df['total_trips'])
+                        users_df.insert(loc, 'labeled_trips_pct', pct.apply(lambda x: f"{x:.1%}"))
+
                     logging.debug(f"Callback - {selected_tab} Stage 5: Returning appended data to update the UI.")
                     content = html.Div([
                         populate_datatable(users_df, store_uuids, 'uuids'),
