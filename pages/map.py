@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from dash import dcc, html, Input, Output, ALL, callback, register_page
+from dash import dcc, html, Input, Output, ALL, callback, register_page, callback_context
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
 
@@ -85,21 +85,18 @@ def filter_by_ble_modes(data_dict, ble_base_modes_selected):
     """
     if not ble_base_modes_selected:
         logging.info("No BLE modes selected => returning data unfiltered")
-        return data_dict
-
+        return {}
     filtered = {}
     for group_key, group_val in data_dict.items():
         orig_trips = group_val['trips']
-        logging.info(f"Filtering group '{group_key}' with {len(orig_trips)} total trips")
-
+        logging.info(f"Filtering group '{group_key}' with {len(orig_trips)} total trips (BLE)")
         filtered_trips = []
-        for i, trip in enumerate(orig_trips):
+        for trip in orig_trips:
             base_mode = get_base_mode_for_trip(trip)
             # Keep the trip if the trip's base_mode is in the user selection
             if base_mode and base_mode in ble_base_modes_selected:
                 filtered_trips.append(trip)
-
-        logging.info(f"After filtering, group '{group_key}' => {len(filtered_trips)} trips remain")
+        logging.info(f"After BLE filtering, group '{group_key}' => {len(filtered_trips)} trips remain")
         if filtered_trips:
             # Shallow copy the group's metadata
             filtered[group_key] = dict(group_val)
@@ -107,6 +104,27 @@ def filter_by_ble_modes(data_dict, ble_base_modes_selected):
 
     return filtered
 
+################################################################################
+# Helper to filter trips by sensed modes
+################################################################################
+def filter_by_sensed_modes(data_dict, sensed_modes_selected):
+    if not sensed_modes_selected:
+        logging.info("No sensed modes selected => returning data unfiltered")
+        return {}
+    filtered = {}
+    for group_key, group_val in data_dict.items():
+        orig_trips = group_val['trips']
+        logging.info(f"Filtering group '{group_key}' with {len(orig_trips)} total trips (Sensed)")
+        filtered_trips = []
+        for trip in orig_trips:
+            sensed_mode = trip.get("data.primary_sensed_mode")
+            if sensed_mode and sensed_mode in sensed_modes_selected:
+                filtered_trips.append(trip)
+        logging.info(f"After sensed filtering, group '{group_key}' => {len(filtered_trips)} trips remain")
+        if filtered_trips:
+            filtered[group_key] = dict(group_val)
+            filtered[group_key]['trips'] = filtered_trips
+    return filtered
 
 ################################################################################
 # Begin page definitions
@@ -174,12 +192,12 @@ def get_map_coordinates(trips_group_by_user_mode, user_mode_list):
             # NEW: get the base BLE mode (CAR, E_CAR, etc.)
             base_mode = get_base_mode_for_trip(trip)
             ble_str = base_mode if base_mode else "None"
-
-            # Build separate hover text strings for the start vs. end point
+            sensed_mode = trip.get("data.primary_sensed_mode", "None")
             start_hover_text = (
                 f"<b>User:</b> {user_id}<br>"
                 f"<b>Mode:</b> {mode_label}<br>"
                 f"<b>BLE Mode:</b> {ble_str}<br>"
+                f"<b>Sensed Mode:</b> {sensed_mode}<br>"
                 f"<b>Started:</b> {start_time}<br>"
                 f"<b>Distance (m):</b> {round(distance_m, 2)}"
             )
@@ -187,27 +205,19 @@ def get_map_coordinates(trips_group_by_user_mode, user_mode_list):
                 f"<b>User:</b> {user_id}<br>"
                 f"<b>Mode:</b> {mode_label}<br>"
                 f"<b>BLE Mode:</b> {ble_str}<br>"
+                f"<b>Sensed Mode:</b> {sensed_mode}<br>"
                 f"<b>Ended:</b> {end_time}<br>"
                 f"<b>Distance (m):</b> {round(distance_m, 2)}"
             )
-
-            # We add two map points (start & end) for each trip
-            coordinates['lon'].append(trip['start_coordinates'][0])
-            coordinates['lon'].append(trip['end_coordinates'][0])
-            coordinates['lat'].append(trip['start_coordinates'][1])
-            coordinates['lat'].append(trip['end_coordinates'][1])
+            coordinates['lon'].extend([trip['start_coordinates'][0], trip['end_coordinates'][0]])
+            coordinates['lat'].extend([trip['start_coordinates'][1], trip['end_coordinates'][1]])
             coordinates['color'].extend([group['color'], group['color']])
-
-            # Each point gets its own text entry
-            coordinates['text'].append(start_hover_text)
-            coordinates['text'].append(end_hover_text)
-
+            coordinates['text'].extend([start_hover_text, end_hover_text])
     return coordinates
-
 
 def create_heatmap_fig(coordinates):
     fig = go.Figure()
-    if len(coordinates.get('lat', [])) > 0:
+    if coordinates.get('lat'):
         fig.add_trace(
             go.Densitymapbox(
                 lon=coordinates['lon'],
@@ -234,7 +244,6 @@ def get_mapbox_zoom_and_center(coords):
     if (not coords.get('lon') or not coords.get('lat') or len(coords['lon']) != len(coords['lat'])):
         logging.error("Invalid input to get_mapbox_zoom_and_center, coords: " + str(coords))
         return 0, (0, 0)
-
     min_lonlat = (min(coords['lon']), min(coords['lat']))
     max_lonlat = (max(coords['lon']), max(coords['lat']))
     midpoint = (min_lonlat[0] + max_lonlat[0]) / 2, (min_lonlat[1] + max_lonlat[1]) / 2
@@ -246,10 +255,9 @@ def get_mapbox_zoom_and_center(coords):
     logging.debug("zoom: " + str(zoom) + " midpoint: " + str(midpoint))
     return zoom, midpoint
 
-
 def create_bubble_fig(coordinates):
     fig = go.Figure()
-    if len(coordinates.get('lon', [])) > 0:
+    if coordinates.get('lon'):
         fig.add_trace(
             go.Scattermapbox(
                 lat=coordinates['lat'],
@@ -276,23 +284,18 @@ def create_bubble_fig(coordinates):
         )
     return fig
 
-
 def get_trips_group_by_user_id(trips_data):
-    trips_group_by_user_id = None
     trips_df = pd.DataFrame(trips_data['data'])
-    if not trips_df.empty:
-        trips_group_by_user_id = trips_df.groupby('user_id')
-    return trips_group_by_user_id
+    return trips_df.groupby('user_id') if not trips_df.empty else None
 
 def get_trips_group_by_user_mode(trips_data):
-    trips_group_by_user_mode = None
     trips_df = pd.DataFrame(trips_data.get('data'))
     if not trips_df.empty:
         if 'mode_confirm' not in trips_df.columns:
             trips_df['mode_confirm'] = None
         trips_df['mode_confirm'] = trips_df['mode_confirm'].fillna('Unlabeled')
-        trips_group_by_user_mode = trips_df.groupby('mode_confirm')
-    return trips_group_by_user_mode
+        return trips_df.groupby('mode_confirm')
+    return None
 
 def create_single_option(value, color, label=None, icon=None):
     if icon:
@@ -322,8 +325,7 @@ def create_single_option(value, color, label=None, icon=None):
     }
 
 def create_users_dropdown_options(trips_group_by_user_id, uuids_perm, tokens_perm):
-    options = list()
-    user_ids = set()
+    options = []
     for user_id in trips_group_by_user_id:
         color = trips_group_by_user_id[user_id]['color']
         if tokens_perm:
@@ -331,7 +333,6 @@ def create_users_dropdown_options(trips_group_by_user_id, uuids_perm, tokens_per
             label = f"{token}\n({user_id})" if uuids_perm else token
         else:
             label = user_id if uuids_perm else ''
-        user_ids.add(user_id)
         options.append(create_single_option(user_id, color, label=label))
     return options
 
@@ -348,10 +349,6 @@ def create_modes_dropdown_options(trips_group_by_user_mode):
         )
     return options
 
-
-################################################################################
-# Changed: create BLE modes dropdown based on the "base modes" (CAR, E_CAR, etc.)
-################################################################################
 def create_ble_modes_dropdown_options(trips_data):
     """
     Creates a list of dropdown options for the "BLE Modes" filter,
@@ -364,13 +361,19 @@ def create_ble_modes_dropdown_options(trips_data):
 
     for idx, base_mode in enumerate(base_modes):
         color = color_palette[idx % len(color_palette)]
-        options.append(
-            create_single_option(
-                value=base_mode,
-                color=color,
-                label=base_mode
-            )
-        )
+        options.append(create_single_option(base_mode, color, label=base_mode))
+    return options
+
+def create_sensed_modes_dropdown_options(trips_data):
+    unique_modes = set()
+    for user_data in trips_data.get('users_data_by_user_id', {}).values():
+        for trip in user_data.get('trips', []):
+            sensed_mode = trip.get("data.primary_sensed_mode")
+            if sensed_mode:
+                unique_modes.add(sensed_mode)
+    options = []
+    for mode in sorted(unique_modes):
+        options.append(create_single_option(mode, "gray", label=mode))
     return options
 
 map_type_options = []
@@ -425,7 +428,8 @@ def create_filters_dropdowns(map_type, trips_data):
     if config.get('vehicle_identities'):
         ble_modes_options = create_ble_modes_dropdown_options(trips_data)
         filters.append(('BLE Modes', 'ble_modes', ble_modes_options))
-
+    sensed_modes_options = create_sensed_modes_dropdown_options(trips_data)
+    filters.append(('Sensed Modes', 'sensed_modes', sensed_modes_options))
     uuids_perm, tokens_perm = has_permission('options_uuids'), has_permission('options_tokens')
     if map_type == 'lines' and (uuids_perm or tokens_perm):
         users_options = create_users_dropdown_options(
@@ -457,52 +461,40 @@ def create_filters_dropdowns(map_type, trips_data):
     Output('trip-map-row', 'children'),
     Input('map-type-dropdown', 'value'),
     Input({'type': 'map-filter-dropdown', 'id': ALL}, 'value'),
+    Input({'type': 'map-filter-dropdown', 'id': ALL}, 'id'),
     Input('store-trips-map', 'data'),
 )
-def update_output(map_type, filter_values, trips_data):
+def update_output(map_type, filter_values, filter_ids, trips_data):
     logging.info("=== Entered update_output callback ===")
     logging.info(f"map_type: {map_type}")
-    logging.info(f"filter_values: {filter_values}")
+    logging.info(f"filter_values: {filter_values}, filter_ids: {filter_ids}")
 
-    # Check if we have any trip data
-    if not trips_data.get('users_data_by_user_id') and not trips_data.get('users_data_by_user_mode'):
-        logging.info("No trip data found in store-trips-map")
-        return html.Div(
-            "No trip data available for the selected date",
-            id="no-trip-text",
-            style={'font-size': 20, 'margin-top': 20}
-        )
+    # Create a dictionary mapping filter IDs to selected values
+    filter_dict = {filter_id['id']: value for filter_id, value in zip(filter_ids, filter_values)}
 
-    # The order of dropdown filters depends on how they were built:
-    #   [0] => labeled modes
-    #   [1] => BLE modes (if present)
-    #   [2] => users (if present)
-    selected_modes = filter_values[0] if len(filter_values) > 0 else []
-    selected_ble_modes = filter_values[1] if len(filter_values) > 1 else []
-    selected_uuids = filter_values[2] if len(filter_values) > 2 else []
+    selected_modes = filter_dict.get('modes', [])
+    selected_ble_modes = filter_dict.get('ble_modes', [])
+    selected_sensed_modes = filter_dict.get('sensed_modes', [])
+    selected_uuids = filter_dict.get('users', [])
 
-    logging.info(f"selected_modes={selected_modes} | selected_ble_modes={selected_ble_modes} | selected_uuids={selected_uuids}")
+    logging.info(f"selected_modes={selected_modes} | selected_ble_modes={selected_ble_modes} | selected_sensed_modes={selected_sensed_modes} | selected_uuids={selected_uuids}")
 
-    # Filter function that checks each trip's base mode
-    user_data_by_user_mode_filtered = filter_by_ble_modes(
-        trips_data['users_data_by_user_mode'],
-        selected_ble_modes
-    )
-    user_data_by_user_id_filtered = filter_by_ble_modes(
-        trips_data['users_data_by_user_id'],
-        selected_ble_modes
-    )
+    # Apply filters individually, then intersect
+    filtered_data = trips_data['users_data_by_user_mode']
+    filtered_id_data = trips_data['users_data_by_user_id']
 
-    remaining_mode_trips = sum(len(x['trips']) for x in user_data_by_user_mode_filtered.values())
-    remaining_id_trips = sum(len(x['trips']) for x in user_data_by_user_id_filtered.values())
-    logging.info(f"Total trips left in user_data_by_user_mode_filtered: {remaining_mode_trips}")
-    logging.info(f"Total trips left in user_data_by_user_id_filtered: {remaining_id_trips}")
+    if selected_ble_modes:
+        user_data_by_user_mode_filtered = filter_by_ble_modes(filtered_data, selected_ble_modes)
+        user_data_by_user_id_filtered = filter_by_ble_modes(trips_data['users_data_by_user_id'], selected_ble_modes)
+    else:
+        user_data_by_user_mode_filtered = trips_data['users_data_by_user_mode']
+        user_data_by_user_id_filtered = trips_data['users_data_by_user_id']
 
-    # Filter by selected labeled modes in get_map_coordinates
+    if selected_sensed_modes:
+        user_data_by_user_mode_filtered = filter_by_sensed_modes(user_data_by_user_mode_filtered, selected_sensed_modes)
+        user_data_by_user_id_filtered = filter_by_sensed_modes(user_data_by_user_id_filtered, selected_sensed_modes)
+
     coordinates = get_map_coordinates(user_data_by_user_mode_filtered, selected_modes)
-    lat_count = len(coordinates.get('lat', []))
-    lon_count = len(coordinates.get('lon', []))
-    logging.info(f"Coordinates: lat={lat_count}, lon={lon_count}")
 
     # Build the figure based on map_type
     if map_type == 'lines':
@@ -583,7 +575,6 @@ def store_trips_map_data(trips_data, label_options):
         # Extract the color, then deduplicate
         colors = [[mode, rich_mode['color']] for mode, rich_mode in rich_modes]
         deduped_colors = emcdb.dedupe_colors(colors, adjustment_range=[0.5, 1.5])
-
         for i, (mode, trips_group) in enumerate(users_data_by_user_mode.items()):
             trips_group['icon'] = rich_modes[i][1]['icon']
             trips_group['color'] = deduped_colors[mode]
