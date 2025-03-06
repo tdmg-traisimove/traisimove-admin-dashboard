@@ -19,6 +19,7 @@ from utils.datetime_utils import iso_to_date_only
 import emission.core.timer as ect
 import emission.storage.decorations.stats_queries as esdsq
 from utils.ux_utils import skeleton
+from utils.datetime_utils import ts_to_iso
 register_page(__name__, path="/data")
 
 intro = """## Data"""
@@ -166,14 +167,11 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                     logging.debug(f"Callback - {selected_tab} insufficient permission.")
                     content = html.Div([html.P("No data available or you don't have permission.")])
                 else:
-                    def format_date(ts):
-                        if pd.isna(ts): return ''
-                        return arrow.get(ts).format('YYYY-MM-DD HH:mm:ss')
-                    users_df['first_trip'] = users_df['pipeline_range.start_ts'].apply(format_date)
-                    users_df['last_trip'] = users_df['pipeline_range.end_ts'].apply(format_date)
-                    users_df['last_call'] = users_df['last_call_ts'].apply(format_date)
-                    users_df.drop(columns=[c for c in users_df.columns if c not in columns],
-                                  inplace=True)
+                    users_df = users_df[[c for c in columns if c in users_df.columns]]
+                    for col in users_df.columns:
+                        if col.endswith('_ts'):
+                            users_df[col] = users_df[col].apply(ts_to_iso)
+
                     logging.debug(f"Callback - {selected_tab} Stage 5: Returning appended data to update the UI.")
                     content = html.Div([
                         populate_datatable(users_df, store_uuids, 'uuids'),

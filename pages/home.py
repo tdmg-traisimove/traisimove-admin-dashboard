@@ -136,6 +136,8 @@ def compute_trips_trend(trips_df, date_col):
 def get_number_of_active_users(users_df, threshold):
     with ect.Timer() as total_timer:
         now_ts = arrow.utcnow().timestamp()
+        if 'last_call_ts' not in users_df.columns:
+            return 0
         active_users_df = users_df[
             (now_ts - users_df['last_call_ts']) <= threshold
         ]
