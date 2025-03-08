@@ -1,4 +1,5 @@
 import arrow
+import pandas as pd
 
 MAX_EPOCH_TIME = 2 ** 31 - 1
 
@@ -30,3 +31,9 @@ def iso_to_date_only(*iso_strs: str):
     e.g. '2021-01-01T00:00:00.000Z' -> '2021-01-01'
     """
     return [iso_str[:10] if iso_str else None for iso_str in iso_strs]
+
+
+def ts_to_iso(ts: float):
+    if pd.isna(ts):
+        return None
+    return arrow.get(ts).format('YYYY-MM-DD HH:mm:ss')
