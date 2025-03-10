@@ -1,16 +1,10 @@
-import json
-import os
-
 import requests
 import logging
-
 from utils import constants
 
-STUDY_CONFIG = os.getenv('STUDY_CONFIG')
-PATH = os.getenv('CONFIG_PATH')
-CONFIG_URL = PATH + STUDY_CONFIG + ".nrel-op.json"
-response = requests.get(CONFIG_URL)
-config = json.loads(response.text)
+import emission.analysis.configs.dynamic_config as eacd
+
+config = eacd.get_dynamic_config()
 surveyinfo = config.get("survey_info",
     {
       "surveys": {
@@ -53,8 +47,8 @@ def get_allowed_named_trip_columns():
         return permissions.get('additional_trip_columns', [])
 
 def get_required_columns():
-    required_cols = {'user_id'}
-    required_cols.update(col['path'] for col in constants.REQUIRED_NAMED_COLS)
+    required_cols = ['user_id']
+    required_cols.extend(col['path'] for col in constants.REQUIRED_NAMED_COLS)
     return required_cols
 
 
@@ -66,47 +60,41 @@ def get_all_named_trip_columns():
     return named_columns
 
 def get_all_trip_columns():
-    columns = set()
-    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
-    columns.update(get_allowed_trip_columns())
-    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
-    columns.update(
-        col['path'] for col in get_allowed_named_trip_columns()
-    )
-    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
-
-    columns.update(get_required_columns())
-    # logging.debug("get_all_trip_columns: curr set is %s" % columns)
-    columns.update(permissions.get('additional_trip_columns', []))
+    columns = get_allowed_trip_columns()
+    columns.extend([col['path'] for col in get_allowed_named_trip_columns()
+                    if col['path'] not in columns])
+    columns.extend([col for col in get_required_columns()
+                    if col not in columns])
     logging.debug("get_all_trip_columns: after additional columns, curr set is %s" % columns)
     return columns
 
 
 def get_allowed_trip_columns():
-    columns = set(constants.VALID_TRIP_COLS)
+    columns = list(constants.VALID_TRIP_COLS)
     for column in permissions.get("data_trips_columns_exclude", []):
-        columns.discard(column)
+        columns.remove(column)
     for column in permissions.get("additional_trip_columns", []):
-        columns.add(column)
+        if column not in columns:
+            columns.append(column)
     logging.debug("allowed trip columns are %s" % columns)
     return columns
 
 
 def get_uuids_columns():
-    columns = set(constants.VALID_UUIDS_COLS)
+    columns = list(constants.VALID_UUIDS_COLS)
     for column in permissions.get("data_uuids_columns_exclude", []):
-        columns.discard(column)
+        columns.remove(column)
     return columns
 
 def get_demographic_columns(columns):
     for column in permissions.get("data_demographics_columns_exclude", []):
-        columns.discard(column)
+        columns.remove(column)
     return columns
 
 def get_trajectories_columns(columns):
-    columns = set(columns)
+    columns = list(columns)
     for column in permissions.get("data_trajectories_columns_exclude", []):
-        columns.discard(column)
+        columns.remove(column)
     return columns
 
 def get_token_prefix():
