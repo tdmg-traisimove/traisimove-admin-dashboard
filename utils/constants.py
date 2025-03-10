@@ -9,6 +9,7 @@ MULTILABEL_NAMED_COLS = [
 ]
 
 VALID_TRIP_COLS = [
+    "user_id",
     "data.start_local_dt",
     "data.start_fmt_time",
     "data.end_local_dt",
@@ -24,7 +25,6 @@ VALID_TRIP_COLS = [
     "data.primary_sensed_mode",
     "data.primary_predicted_mode",
     "data.primary_ble_sensed_mode",
-    "user_id"
 ]
 
 BINARY_TRIP_COLS = [
@@ -35,19 +35,25 @@ BINARY_TRIP_COLS = [
     "inferred_section_summary",
 ]
 
-valid_uuids_columns = [
+VALID_UUIDS_COLS = [
     'user_token',
     'user_id',
     'update_ts',
+    'create_ts',
     'total_trips',
     'labeled_trips',
-    'first_trip',
-    'last_trip',
-    'last_call',
-    'platform',
+    'pipeline_range.start_ts',
+    'pipeline_range.end_ts',
+    'last_call_ts',
+    'last_sync_ts',
+    'last_put_ts',
+    'last_diary_fetch_ts',
+    'last_location_ts',
+    'last_phone_data_ts',
+    'curr_platform',
     'manufacturer',
-    'app_version',
-    'os_version',
+    'client_app_version',
+    'client_os_version',
     'phone_lang',
 ]
 
