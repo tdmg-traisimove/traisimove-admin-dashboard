@@ -3,7 +3,8 @@ import base64
 import zipfile
 import qrcode
 
-def make_qrcode_base64_img(url):
+def make_qrcode_base64_img(token):
+    url = f'nrelopenpath://login_token?token={token}'
     img = qrcode.make(url,
                       error_correction=qrcode.constants.ERROR_CORRECT_H,
                       box_size=4)
@@ -15,8 +16,7 @@ def make_qrcodes_zipfile(tokens):
     def zip_directory(bytes_io):
         with zipfile.ZipFile(bytes_io, mode="w") as zf:
             for token in tokens:
-                url = f'nrelopenpath://login_token?token={token}'
-                qrcode = make_qrcode_base64_img(url)
+                qrcode = make_qrcode_base64_img(token)
                 image_data = base64.b64decode(qrcode)
                 zf.writestr(token + '.png', image_data)
     return zip_directory

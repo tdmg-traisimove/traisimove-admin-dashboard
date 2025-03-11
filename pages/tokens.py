@@ -173,7 +173,8 @@ def populate_datatable(uuids, tokens, qrcodes):
         dag.AgGrid(
             id='tokens-table',
             rowData=df.to_dict('records'),
-            columnDefs=[{"field": i, "headerName": i} for i in df.columns],
+            columnDefs=[{"field": c, "headerName": c,
+                         "minWidth": 500 if c == 'qr_code' else 0} for c in df.columns],
             defaultColDef={"sortable": True, "filter": True,
                           "cellRenderer": "markdown",
                           "autoHeight": True},
