@@ -196,7 +196,7 @@ def render_content(tab, store_uuids, store_excluded_uuids, store_trips, store_de
                 logging.debug(f"Callback - {selected_tab} Stage 2: Handling Trips tab.")
 
                 data = store_trips.get("data", [])
-                columns = perm_utils.get_all_trip_columns()
+                columns = perm_utils.get_allowed_trip_columns()
                 columns.extend(store_trips.get("userinputcols", []))
                 has_perm = perm_utils.has_permission('data_trips')
 
