@@ -100,7 +100,7 @@ def get_start_and_end_hover_text(trip, map_type):
     return [fmt_dict(start_info), fmt_dict(end_info)]
 
 
-def get_map_coordinates(filtered_trips, label_options, map_type):
+def get_map_coordinates(filtered_trips, map_type):
     """
     Build arrays of lat, lon, color, and text so that the bubble map can
     display detailed hover info (including base BLE mode) for each start/end.
@@ -115,11 +115,9 @@ def get_map_coordinates(filtered_trips, label_options, map_type):
     for trip in filtered_trips:
         coordinates['lon'].extend([trip['start_coordinates'][0], trip['end_coordinates'][0]])
         coordinates['lat'].extend([trip['start_coordinates'][1], trip['end_coordinates'][1]])
-        primary_mode = trip.get('mode_confirm') \
-                       or (ble_enabled and trip.get('data.primary_ble_sensed_mode')) \
-                       or trip.get("data.primary_sensed_mode")
-        rich_mode = emcdb.get_rich_mode_for_value(primary_mode, label_options)
-        color = rich_mode['color']
+        color = (trip.get('mode_confirm_color')
+                 or trip.get('data.primary_ble_sensed_mode_color')
+                 or trip.get('data.primary_sensed_mode_color'))
         coordinates['color'].extend([color, color])
         (start_hover_text, end_hover_text) = get_start_and_end_hover_text(trip, map_type)
         coordinates['text'].extend([start_hover_text, end_hover_text])
@@ -249,26 +247,27 @@ def create_users_dropdown_options(trips):
     options = []
     for user_id in sorted(unique_users):
         label = get_user_label(user_id)
-        options.append(create_single_option(user_id, label=label))
+        options.append(create_single_option(
+            user_id,
+            label=label,
+        ))
     return options
 
 
-def create_modes_dropdown_options(trips, mode_key, label_options):
-    unique_modes = set()
+def create_modes_dropdown_options(trips, mode_key):
+    unique_modes = {}
     for trip in trips:
-        sensed_mode = trip.get(mode_key)
-        if sensed_mode:
-            unique_modes.add(sensed_mode)
+        mode = trip.get(mode_key)
+        if mode and mode not in unique_modes:
+            unique_modes[mode] = (trip[f'{mode_key}_color'], trip[f'{mode_key}_icon'])
     options = []
-    for mode in sorted(unique_modes):
-        base_mode = emcdb.get_rich_mode_for_value(mode, label_options)
-        opt = create_single_option(
+    for mode in sorted(unique_modes.keys()):
+        options.append(create_single_option(
             mode,
-            base_mode['color'],
             label=mode,
-            icon=base_mode['icon']
-        )
-        options.append(opt)
+            color=unique_modes[mode][0],
+            icon=unique_modes[mode][1],
+        ))
     return options
 
 
@@ -283,8 +282,7 @@ if has_permission('map_trip_lines'):
 
 layout = html.Div(
     [
-        # Store for label options so it exists
-        dcc.Store(id="store-label-options", data={}),
+        dcc.Store(id="store-map-trips", data=[]),
         dcc.Markdown(intro),
 
         dbc.Row([
@@ -298,10 +296,17 @@ layout = html.Div(
                     ),
                 ],
                 xl=3, lg=4, sm=6,
-            )
+            ),
         ]),
         dbc.Row(id='map-filters-row'),
-        dbc.Row(id="trip-map-row")
+        dbc.Row(
+            dbc.Checklist(
+                id='bin-other-labeled-modes',
+                options=[{'label': 'Bin "Other" Labels', 'value': 'bin'}],
+                value=['bin'],
+            )
+        ),
+        dbc.Row(id="trip-map-row"),
     ],
     style={'display': 'flex', 'flex-direction': 'column', 'gap': 8}
 )
@@ -309,21 +314,19 @@ layout = html.Div(
 @callback(
     Output('map-filters-row', 'children'),
     Input('map-type-dropdown', 'value'),
-    Input('store-trips', 'data'),
-    Input('store-label-options', 'data'),
+    Input('store-map-trips', 'data'),
 )
-def create_filters_dropdowns(map_type, trips_data, label_options):
+def create_filters_dropdowns(map_type, trips):
     filters = []
-    trips = trips_data['data']
 
-    labeled_modes_options = create_modes_dropdown_options(trips, 'mode_confirm', label_options)
+    labeled_modes_options = create_modes_dropdown_options(trips, 'mode_confirm')
     filters.append(('Labeled Modes', 'labeled_modes', labeled_modes_options))
 
-    sensed_modes_options = create_modes_dropdown_options(trips, 'data.primary_sensed_mode', label_options)
+    sensed_modes_options = create_modes_dropdown_options(trips, 'data.primary_sensed_mode')
     filters.append(('Sensed Modes', 'sensed_modes', sensed_modes_options))
 
     if config.get('vehicle_identities'):
-        ble_modes_options = create_modes_dropdown_options(trips, 'data.primary_ble_sensed_mode', label_options)
+        ble_modes_options = create_modes_dropdown_options(trips, 'data.primary_ble_sensed_mode')
         filters.append(('BLE Modes', 'ble_modes', ble_modes_options))
 
     uuids_perm, tokens_perm = has_permission('options_uuids'), has_permission('options_emails')
@@ -350,19 +353,49 @@ def create_filters_dropdowns(map_type, trips_data, label_options):
 
 
 @callback(
+    Output('store-map-trips', 'data'),
+    Input('store-trips', 'data'),
+    Input('store-label-options', 'data'),
+    Input('bin-other-labeled-modes', 'value'),
+)
+def store_map_trips(trips_data, label_options, bin_other_labels):
+    trips = trips_data['data']
+
+    for mode_key in ['mode_confirm', 'data.primary_sensed_mode', 'data.primary_ble_sensed_mode']:
+        modes_colors = {}
+        for trip in trips:
+            if mode_key in trip:
+                if mode_key == 'mode_confirm':
+                    if not trip[mode_key]:
+                        trip[mode_key] = 'unlabeled'
+                    elif bin_other_labels:
+                        mode_is_user_defined = trip[mode_key] and mode_key == 'mode_confirm' \
+                            and not any(mlo['value'] == trip[mode_key] for mlo in label_options['MODE'])
+                        if mode_is_user_defined:
+                            trip[mode_key] = 'other'
+                if trip[mode_key] not in modes_colors:
+                    rich_mode = emcdb.get_rich_mode_for_value(trip[mode_key], label_options)
+                    trip[f'{mode_key}_icon'] = rich_mode['icon']
+                    modes_colors[trip[mode_key]] = rich_mode['color']
+        deduped_colors = emcdb.dedupe_colors(modes_colors.items(), adjustment_range=[0.5, 1.5])
+        for trip in trips:
+            if mode_key in trip and trip[mode_key] in deduped_colors:
+                trip[f'{mode_key}_color'] = deduped_colors[trip[mode_key]]
+
+    return trips
+
+
+@callback(
     Output('trip-map-row', 'children'),
+    Input('store-map-trips', 'data'),
     Input('map-type-dropdown', 'value'),
     Input({'type': 'map-filter-dropdown', 'id': ALL}, 'value'),
     Input({'type': 'map-filter-dropdown', 'id': ALL}, 'id'),
-    Input('store-trips', 'data'),
-    Input('store-label-options', 'data'),
 )
-def update_output(map_type, filter_values, filter_ids, trips_data, label_options):
+def update_output(trips, map_type, filter_values, filter_ids):
     logging.info("=== Entered update_output callback ===")
     logging.info(f"map_type: {map_type}")
     logging.info(f"filter_values: {filter_values}, filter_ids: {filter_ids}")
-
-    trips = trips_data['data']
 
     # dict mapping filter IDs to selected values
     filter_dict = {filter_id['id']: value for filter_id, value in zip(filter_ids, filter_values)}
@@ -387,7 +420,7 @@ def update_output(map_type, filter_values, filter_ids, trips_data, label_options
         logging.info("No trips in filtered data, returning with message")
         return filter_message
     
-    coordinates = get_map_coordinates(trips, label_options, map_type)
+    coordinates = get_map_coordinates(trips, map_type)
     # Build the figure based on map_type
     if map_type == 'lines':
         logging.info("Drawing lines map")
