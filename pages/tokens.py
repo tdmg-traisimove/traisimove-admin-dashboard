@@ -19,6 +19,8 @@ STUDY_CONFIG = os.getenv('STUDY_CONFIG')
 if has_permission('token_generate'):
     register_page(__name__, path="/tokens")
 
+token_prefix = get_token_prefix()
+configured_subgroups = config.get('opcode', {}).get('subgroups')
 
 layout = html.Div(
     [
@@ -54,26 +56,18 @@ layout = html.Div(
                 html.Div([
                     dbc.Label('Token Subgroup'),
                     dcc.Dropdown(
-                        config.get('opcode', {}).get('subgroups', ['test']),
+                        configured_subgroups or ['test'],
                         id='token-subgroup',
                     ),
                 ]),
-                dbc.Alert([
-                    dbc.Label('New token(s) will be in this format:', style={'margin': '0'}),
-                    html.Hr(style={'margin': '8px'}),
-                    dbc.Label(id='example-token', style={
-                        'font-family': 'monospace',
-                        'word-break': 'break-all',
-                        'margin': '0',
-                    }),
-                ],
-                    color='info',
-                    style={'margin': '15px 5px'},
-                ),
                 html.Div([
                     dbc.Label('Number of Tokens'),
                     dbc.Input(value=1, id='token-count', type='number', min=0, required=True),
                 ]),
+                dbc.Alert(
+                    id='generate-tokens-alert',
+                    style={'margin': '15px 5px'},
+                ),
                 html.Div([
                     dbc.Button('Close', id='close-modal-btn', color='primary', outline=True, n_clicks=0),
                     dbc.Button('Generate', id='generate-tokens-btn', color='primary', n_clicks=0),
@@ -112,8 +106,43 @@ def toggle_modal(_n1, _n2, _n3, is_open):
 
 
 @callback(
+    Output('generate-tokens-btn', 'disabled'),
+    Output('generate-tokens-alert', 'children'),
+    Output('generate-tokens-alert', 'color'),
+    Input('token-program', 'value'),
+    Input('token-subgroup', 'value'),
+    Input('token-length', 'value'),
+    Input('token-count', 'value'),
+)
+def validate_token_inputs(program, subgroup, token_length, token_count):
+    if not program:
+        return True, f'Program must be {STUDY_CONFIG or "program"}', 'danger'
+    elif configured_subgroups and (not subgroup or subgroup not in configured_subgroups):
+        return True,f'Subgroup must be one of {configured_subgroups}', 'danger'
+    elif not token_length or token_length < 6 or token_length > 100:
+        return True, 'Token length must be between 6 and 100', 'danger'
+    elif not token_count or token_count < 1:
+        return True, 'Token count must be at least 1', 'danger'
+    
+    example_token = emcao.generate_opcode(token_prefix, program, subgroup, token_length)
+    info = [
+        dbc.Label(
+            f'{token_count} token(s) will be generated in this format:',
+            style={'margin': '0'}
+        ),
+        html.Hr(style={'margin': '8px'}),
+        dbc.Label(
+            example_token,
+            style={'font-family': 'monospace',
+                   'word-break': 'break-all',
+                   'margin': '0' }
+        ),
+    ]
+    return False, info, 'info'
+
+
+@callback(
     Output('store-tokens', 'data', allow_duplicate=True),
-    Output('example-token', 'children'),
     Output('generate-tokens-btn', 'n_clicks'),
     Input('generate-tokens-btn', 'n_clicks'),
     Input('token-program', 'value'),
@@ -125,16 +154,15 @@ def toggle_modal(_n1, _n2, _n3, is_open):
     prevent_initial_call=True
 )
 def generate_tokens(n_clicks, program, subgroup, token_length, token_count, tokens, uuids):
-    prefix = get_token_prefix()
-    new_tokens = [
-        emcao.generate_opcode(prefix, program, subgroup, token_length)
-        for _ in range(token_count)
-    ]
     if n_clicks is not None and n_clicks > 0:
+        new_tokens = [
+            emcao.generate_opcode(token_prefix, program, subgroup, token_length)
+            for _ in range(token_count)
+        ]
         esdt.insert_many_tokens(new_tokens)
         tokens += new_tokens
-        return tokens, new_tokens[0], 0
-    return no_update, new_tokens[0], no_update
+        return tokens, 0
+    return no_update, no_update
 
 
 @callback(
