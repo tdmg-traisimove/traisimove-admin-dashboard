@@ -83,23 +83,24 @@ def create_lines_map(coordinates):
     return fig
 
 
-def get_start_and_end_hover_text(trip):
-    trip_info = {
-        'User': trip.get('user_id', 'Unknown user'),
-        'Distance (m)': round(trip.get('data.distance_meters', 0), 2),
-        'Labeled Mode': trip.get('mode_confirm', 'Unlabeled'),
-        'Sensed Mode': trip.get("data.primary_sensed_mode") or "None",
-    }
+def get_start_and_end_hover_text(trip, map_type):
+    trip_info = {}
+    if map_type == 'lines':
+        if (has_permission('options_uuids') or has_permission('options_emails')):
+            trip_info['User'] = get_user_label(trip.get('user_id'))
+        trip_info['Distance (m)'] = round(trip.get('data.distance_meters', 0), 2)
+    
+    trip_info['Labeled Mode'] = trip.get('mode_confirm', 'Unlabeled')
+    trip_info['Sensed Mode'] = trip.get("data.primary_sensed_mode") or "None"
     if ble_enabled:
         trip_info['BLE Mode'] = trip.get("data.primary_ble_sensed_mode") or "None"
-
-    start_info = dict(trip_info, Time=trip.get('trip_start_time_str'))
-    end_info = dict(trip_info, Time=trip.get('trip_end_time_str'))
+    start_info = { 'Coordinates': f'{trip["start_coordinates"]}'} | trip_info
+    end_info = { 'Coordinates': f'{trip["end_coordinates"]}'} | trip_info
     fmt_dict = lambda d: '<br>'.join([f'<b>{k}:</b> {v}' for k, v in d.items()])
     return [fmt_dict(start_info), fmt_dict(end_info)]
 
 
-def get_map_coordinates(filtered_trips, label_options):
+def get_map_coordinates(filtered_trips, label_options, map_type):
     """
     Build arrays of lat, lon, color, and text so that the bubble map can
     display detailed hover info (including base BLE mode) for each start/end.
@@ -120,7 +121,7 @@ def get_map_coordinates(filtered_trips, label_options):
         rich_mode = emcdb.get_rich_mode_for_value(primary_mode, label_options)
         color = rich_mode['color']
         coordinates['color'].extend([color, color])
-        (start_hover_text, end_hover_text) = get_start_and_end_hover_text(trip)
+        (start_hover_text, end_hover_text) = get_start_and_end_hover_text(trip, map_type)
         coordinates['text'].extend([start_hover_text, end_hover_text])
     return coordinates
 
@@ -224,7 +225,21 @@ def create_single_option(value, color=None, label=None, icon=None):
     }
 
 
-def create_users_dropdown_options(trips, uuids_perm, tokens_perm):
+def get_user_label(user_id):
+    """
+    Return a label for a user, including the user_id and/or token,
+    depending on what permissions are enabled
+    """
+    if user_id is None:
+        return ''
+    (uuids_perm, tokens_perm) = has_permission('options_uuids'), has_permission('options_emails')
+    if tokens_perm:
+        token = ecwu.User.fromUUID(UUID(user_id))._User__email
+        return f"{token}\n({user_id})" if uuids_perm else token
+    return user_id if uuids_perm else ''
+
+
+def create_users_dropdown_options(trips):
     options = []
     unique_users = set()
     for trip in trips:
@@ -233,11 +248,7 @@ def create_users_dropdown_options(trips, uuids_perm, tokens_perm):
             unique_users.add(user_id)
     options = []
     for user_id in sorted(unique_users):
-        if tokens_perm:
-            token = ecwu.User.fromUUID(UUID(user_id))._User__email
-            label = f"{token}\n({user_id})" if uuids_perm else token
-        else:
-            label = user_id if uuids_perm else ''
+        label = get_user_label(user_id)
         options.append(create_single_option(user_id, label=label))
     return options
 
@@ -315,9 +326,9 @@ def create_filters_dropdowns(map_type, trips_data, label_options):
         ble_modes_options = create_modes_dropdown_options(trips, 'data.primary_ble_sensed_mode', label_options)
         filters.append(('BLE Modes', 'ble_modes', ble_modes_options))
 
-    uuids_perm, tokens_perm = has_permission('options_uuids'), has_permission('options_tokens')
+    uuids_perm, tokens_perm = has_permission('options_uuids'), has_permission('options_emails')
     if map_type == 'lines' and (uuids_perm or tokens_perm):
-        users_options = create_users_dropdown_options(trips, uuids_perm, tokens_perm)
+        users_options = create_users_dropdown_options(trips)
         filters.append(('Users', 'users', users_options))
 
     return [
@@ -376,7 +387,7 @@ def update_output(map_type, filter_values, filter_ids, trips_data, label_options
         logging.info("No trips in filtered data, returning with message")
         return filter_message
     
-    coordinates = get_map_coordinates(trips, label_options)
+    coordinates = get_map_coordinates(trips, label_options, map_type)
     # Build the figure based on map_type
     if map_type == 'lines':
         logging.info("Drawing lines map")
