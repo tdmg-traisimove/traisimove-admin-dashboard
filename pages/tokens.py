@@ -159,9 +159,7 @@ def populate_datatable(uuids, tokens, qrcodes):
     if not tokens:
         return None
     df = pd.DataFrame({'token': tokens})
-    df['qr_code'] = df['token'].apply(
-        lambda row: qrcodes.get(row, '(click to reveal)')
-    )
+    df['qr_code'] = df['token'].map(qrcodes).fillna('(click to reveal)')
     uuids_records = uuids.get('data', [])
     df['in_use'] = df.apply(
         lambda row: any(uuid['user_email'] == row['token']
