@@ -28,7 +28,7 @@ layout = html.Div(
         dcc.Store(id="store-qrcodes", data={}),
         html.Div([
             dcc.Markdown('## Tokens', style={'margin-right': 'auto'}),
-            dbc.Button(children='Generate more tokens', id='open-modal-btn', n_clicks=0),
+            # dbc.Button(children='Generate more tokens', id='open-modal-btn', n_clicks=0),
             dbc.Button(children='Export QR codes',
                        color='primary',
                        outline=True,
