@@ -1,7 +1,7 @@
 --extra-index-url https://plotly.nrel.gov/Docs/packages
 # dash is required to call `build:py`
 dash==2.18.0
-gunicorn==22.0.0
+gunicorn==23.0.0
 plotly==5.24.1
 dash-bootstrap-components==1.4.1
 dash_extensions==0.1.13
